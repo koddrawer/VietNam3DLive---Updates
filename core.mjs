@@ -10,7 +10,7 @@ const CTX = globalThis.__vnlive;
 const { TikTokLiveConnection, WebcastEvent, ControlEvent } = CTX.tiktok;
 const ROOT = CTX.ROOT;            // thư mục gốc gói cài (asar)
 const res = rel => CTX.resolve(rel); // file thực tế: bản cập nhật nếu có, không thì bản gốc
-export const CORE_VERSION = '1.1.4';
+export const CORE_VERSION = '1.1.5';
 const UD = app.getPath('userData');
 const CFG_FILE = path.join(UD, 'config.json');
 const SCORE_FILE = path.join(UD, 'scores.json');
@@ -27,7 +27,7 @@ const DEFAULTS = {
   ttsEnabled: true, voiceComments: true, ttsUrl: 'http://127.0.0.1:8000', ttsKey: '', voice: 'Ngọc Huyền', ttsVolume: 1, fallbackVoice: true,
   vieneuDir: '', vieneuGpu: false, autoStartVieneu: false,
   autoUpdate: true, updateRepo: 'koddrawer/VietNam3DLive---Updates', updateBranch: 'main',
-  bgmEnabled: false, bgmPath: '', bgmVolume: 0.35, bgmDuck: 0.35, bgmShuffle: true,
+  bgmEnabled: false, bgmFiles: [], bgmPath: '', bgmVolume: 0.35, bgmDuck: 0.35, bgmShuffle: true,
   sfxEnabled: true, sfxVolume: 0.8, fwSfx: true,
   pointCooldownSec: 3, showCooldownSec: 15, commentHoldSec: 4, idleHomeSec: 6, maxGreetQueue: 5,
   tiers: [
@@ -141,6 +141,8 @@ function pushScores(changed) { const s = standings(); toStage('scores', { list: 
 const AUDIO_RE = /\.(mp3|m4a|aac|ogg|oga|opus|wav|flac|webm)$/i;
 const mediaUrl = f => 'media://f/' + encodeURIComponent(f);
 function bgmList() {
+  const fl = (cfg.bgmFiles || []).filter(f => AUDIO_RE.test(f) && fs.existsSync(f));
+  if (fl.length) return fl.map(mediaUrl);
   const p = cfg.bgmPath; if (!p) return [];
   try {
     const st = fs.statSync(p);
@@ -424,7 +426,11 @@ ipcMain.handle('update', (e, a) => { const U = CTX.updater; if (a === 'check') r
 CTX.updater.listeners.add(st => toPanel('update-status', CTX.updater.info()));
 ipcMain.handle('pick-file', async (e, kind) => {
   const audio = { name: 'Âm thanh', extensions: ['mp3', 'm4a', 'aac', 'ogg', 'opus', 'wav', 'flac', 'webm'] };
-  const r = await dialog.showOpenDialog(panelWin, { properties: kind === 'bgm-dir' ? ['openDirectory'] : ['openFile'], filters: kind === 'bgm-dir' ? [] : [audio] });
+  if (kind === 'bgm') { // chọn một hoặc nhiều bài nhạc (không chọn thư mục)
+    const r = await dialog.showOpenDialog(panelWin, { title: 'Chọn bài nhạc nền', properties: ['openFile', 'multiSelections'], filters: [audio] });
+    return r.canceled ? null : r.filePaths;
+  }
+  const r = await dialog.showOpenDialog(panelWin, { properties: ['openFile'], filters: [audio] });
   return r.canceled ? null : r.filePaths[0];
 });
 ipcMain.handle('greetings', async (e, a) => {

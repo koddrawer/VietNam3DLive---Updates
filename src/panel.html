@@ -132,8 +132,11 @@ td input,td select{padding:4px 6px}
       <label class="ck"><input type="checkbox" id="bgmShuffle"> Phát ngẫu nhiên</label>
     </div>
     <div class="r">
-      <label class="f">File nhạc hoặc thư mục nhạc<input type="text" id="bgmPath" placeholder="mp3, m4a, ogg, wav…"></label>
-      <button id="pickBgmFile">Chọn file…</button><button id="pickBgmDir">Chọn thư mục…</button>
+      <button id="pickBgmFile">+ Thêm bài nhạc…</button><button id="clearBgm">Xóa hết</button>
+      <span class="note">Chọn được nhiều bài một lúc (giữ Ctrl). mp3, m4a, ogg, wav…</span>
+    </div>
+    <div class="box" id="bgmFilesBox" style="height:auto;max-height:150px;min-height:40px"></div>
+    <div style="display:none"><input type="text" id="bgmPath">
     </div>
     <div class="grid2">
       <label class="f">Âm lượng nhạc: <span id="bgmVolumev"></span><input type="range" id="bgmVolume" min="0" max="1" step="0.05"></label>

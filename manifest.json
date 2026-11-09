@@ -1,13 +1,13 @@
 {
-  "version": "1.1.4",
+  "version": "1.1.5",
   "minShell": "1.1.2",
-  "notes": "Sửa lỗi kết nối Euler (không dùng tính năng gói Business)",
+  "notes": "Nhạc nền: chọn từng bài (chọn được nhiều bài), bỏ chọn thư mục",
   "files": {
-    "core.mjs": "dc48d3d5dd2a81d670342dcf3613effa4890d1e606cbfb67f803bcb410149d4e",
+    "core.mjs": "405e4dd2e908d74a2d728566cc0a65ca93b48bad639a242b115e3fd80a66f5bf",
     "preload.cjs": "29bb4a931981176f1c2188bb46eff380bea0531468f7ae1e89f7043c694f51db",
     "assets/greetings.json": "a154b2e4e98a14d495454567e790779d3b44ad2d761d656ce2992078a15002d3",
-    "src/panel.html": "7f6d2eba043158d5c1fbec1c59a9ee5cee97f075c10f539ca2d01ac514ce242b",
-    "src/panel.js": "cc58af66cd46c0076e3fadaa40ce4b785962c50ca1d85358c249303ef691957f",
+    "src/panel.html": "42205c7d5d8c845f2a6dbcf8a5e143787a2da12cb6fc140cfdf130c554d86b73",
+    "src/panel.js": "048704cf46732ca320691fceeec9007d045f0b8d13ee88eea786b500f6760972",
     "src/provinces.mjs": "65d16ce0264d442a59bbb34f3512d33426d0951f1ccbcd5d030584ce8ce4aa58",
     "src/stage.html": "220673dcca945d5bcc3335c44678b1dee34ddf14f9aaa201f635a38083b6f953",
     "src/stage.js": "0dc468481bf1d39149bd6e0e63534f6ab245a159b1fd6ffac77434c20ed856be"

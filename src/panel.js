@@ -9,7 +9,7 @@ const init = await api.invoke('init');
 cfg = init.cfg;
 
 // ── fields bound to config ──
-const TEXT = ['username', 'apiKey', 'title', 'subtitle', 'ttsUrl', 'vieneuDir', 'bgmPath', 'updateRepo', 'tierTitle'];
+const TEXT = ['username', 'apiKey', 'title', 'subtitle', 'ttsUrl', 'vieneuDir', 'updateRepo', 'tierTitle'];
 const CHECK = ['autoReconnect', 'alwaysOnTop', 'ttsEnabled', 'voiceComments', 'fallbackVoice', 'vieneuGpu', 'autoStartVieneu', 'bgmEnabled', 'bgmShuffle', 'sfxEnabled', 'fwSfx', 'autoUpdate', 'showTierBoard'];
 const NUM = ['pointCooldownSec', 'showCooldownSec', 'commentHoldSec', 'idleHomeSec'];
 const set = patch => api.invoke('set-config', patch).then(c => { cfg = c; });
@@ -20,7 +20,7 @@ function fill() {
   $('resolution').value = cfg.resolution; $('windowScale').value = cfg.windowScale; $('wsv').textContent = cfg.windowScale + '%';
   $('ttsVolume').value = cfg.ttsVolume; $('volv').textContent = Math.round(cfg.ttsVolume * 100) + '%';
   for (const k of SLIDE) { $(k).value = cfg[k]; $(k + 'v').textContent = Math.round(cfg[k] * 100) + '%'; }
-  setVoices(null); renderTiers();
+  setVoices(null); renderTiers(); renderBgm();
 }
 for (const k of TEXT) $(k).addEventListener('change', e => set({ [k]: e.target.value.trim() }));
 for (const k of CHECK) $(k).addEventListener('change', e => set({ [k]: e.target.checked }));
@@ -33,8 +33,17 @@ $('ttsVolume').onchange = e => set({ ttsVolume: +e.target.value });
 $('voice').onchange = e => set({ voice: e.target.value });
 const SLIDE = ['bgmVolume', 'bgmDuck', 'sfxVolume'];
 for (const k of SLIDE) { $(k).oninput = e => { $(k + 'v').textContent = Math.round(e.target.value * 100) + '%'; }; $(k).onchange = e => set({ [k]: +e.target.value }); }
-$('pickBgmFile').onclick = async () => { const f = await api.invoke('pick-file', 'bgm'); if (f) { $('bgmPath').value = f; set({ bgmPath: f, bgmEnabled: true }).then(fill); } };
-$('pickBgmDir').onclick = async () => { const f = await api.invoke('pick-file', 'bgm-dir'); if (f) { $('bgmPath').value = f; set({ bgmPath: f, bgmEnabled: true }).then(fill); } };
+function renderBgm() {
+  const files = cfg.bgmFiles || [];
+  $('bgmFilesBox').innerHTML = files.length ? files.map((f, i) => `<div style="display:flex;gap:8px;align-items:center"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${f.replace(/"/g, '&quot;')}">${i + 1}. ${f.split(/[\\/]/).pop()}</span><button data-rm="${i}" style="padding:0 7px">×</button></div>`).join('') : '<span class="note">Chưa có bài nào.</span>';
+}
+$('pickBgmFile').onclick = async () => {
+  const picked = await api.invoke('pick-file', 'bgm'); if (!picked?.length) return;
+  const files = [...new Set([...(cfg.bgmFiles || []), ...picked])];
+  set({ bgmFiles: files, bgmPath: '', bgmEnabled: true }).then(() => { renderBgm(); $('bgmEnabled').checked = true; });
+};
+$('clearBgm').onclick = () => set({ bgmFiles: [], bgmPath: '' }).then(renderBgm);
+$('bgmFilesBox').onclick = e => { const b = e.target.closest('button[data-rm]'); if (!b) return; const files = [...(cfg.bgmFiles || [])]; files.splice(+b.dataset.rm, 1); set({ bgmFiles: files }).then(renderBgm); };
 // cập nhật
 function showUpd(u) {
   const p = $('updPill'); p.textContent = 'v' + u.version; p.className = 'pill ' + (u.state === 'ready' ? 'connecting' : u.state === 'error' ? 'error' : 'on');
