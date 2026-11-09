@@ -1,7 +1,7 @@
 {
-  "version": "1.1.1",
-  "minShell": "1.1.0",
-  "notes": "Camera chờ đọc xong lời chào mới chuyển người",
+  "version": "1.1.2",
+  "minShell": "1.1.2",
+  "notes": "Sửa lỗi tải cập nhật trên Windows",
   "files": {
     "core.mjs": "042bd0eeed5eb1acefade9c609a757bdd1ac4f29646449dd06cfb397cc415163",
     "preload.cjs": "29bb4a931981176f1c2188bb46eff380bea0531468f7ae1e89f7043c694f51db",
