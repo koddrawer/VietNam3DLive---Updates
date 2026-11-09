@@ -10,7 +10,7 @@ const CTX = globalThis.__vnlive;
 const { TikTokLiveConnection, WebcastEvent, ControlEvent } = CTX.tiktok;
 const ROOT = CTX.ROOT;            // thư mục gốc gói cài (asar)
 const res = rel => CTX.resolve(rel); // file thực tế: bản cập nhật nếu có, không thì bản gốc
-export const CORE_VERSION = '1.1.5';
+export const CORE_VERSION = '1.1.6';
 const UD = app.getPath('userData');
 const CFG_FILE = path.join(UD, 'config.json');
 const SCORE_FILE = path.join(UD, 'scores.json');

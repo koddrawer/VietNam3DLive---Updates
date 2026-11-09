@@ -30,6 +30,8 @@ button{background:var(--card2);color:var(--ink);border:1px solid var(--line);bor
 button:hover{border-color:var(--gold)}
 button.pri{background:var(--gold);color:#2b1c00;border-color:var(--gold)}
 button.dan{border-color:#6b2a26;color:#ffb3ad}
+button.big{font-size:14px;padding:8px 16px}
+button.dan.armed{background:var(--red);color:#fff;border-color:var(--red)}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
 .note{font-size:12px;color:var(--ink2);margin:0}
 table{width:100%;border-collapse:collapse;font-size:13px}
@@ -53,6 +55,7 @@ td input,td select{padding:4px 6px}
   <span class="pill" id="ttPill">TikTok: chưa kết nối</span>
   <span class="pill" id="ttsPill">VieNeu: đang kiểm tra</span>
   <span class="sp"></span>
+  <button id="resetTop" class="dan big">⟲ Reset điểm</button>
   <button id="openStage" class="pri">Mở màn hình live</button>
   <button id="openData">Thư mục dữ liệu</button>
 </header>

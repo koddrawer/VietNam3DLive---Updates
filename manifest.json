@@ -1,13 +1,13 @@
 {
-  "version": "1.1.5",
+  "version": "1.1.6",
   "minShell": "1.1.2",
-  "notes": "Nhạc nền: chọn từng bài (chọn được nhiều bài), bỏ chọn thư mục",
+  "notes": "Thêm nút Reset điểm ở thanh trên cùng",
   "files": {
-    "core.mjs": "405e4dd2e908d74a2d728566cc0a65ca93b48bad639a242b115e3fd80a66f5bf",
+    "core.mjs": "dae919129b076e26eb687da4e105fc5f37ba7be3b7daf1a5cf30d38c023430c2",
     "preload.cjs": "29bb4a931981176f1c2188bb46eff380bea0531468f7ae1e89f7043c694f51db",
     "assets/greetings.json": "a154b2e4e98a14d495454567e790779d3b44ad2d761d656ce2992078a15002d3",
-    "src/panel.html": "42205c7d5d8c845f2a6dbcf8a5e143787a2da12cb6fc140cfdf130c554d86b73",
-    "src/panel.js": "048704cf46732ca320691fceeec9007d045f0b8d13ee88eea786b500f6760972",
+    "src/panel.html": "8e810be42d4b67bf02e8c68e79a173891e2258c9cc506fad865b371b8a8a85a2",
+    "src/panel.js": "f94bb6375d570c37932d95a50c64ca4f8e91163392b4d9b056d5f2635c8f8b2d",
     "src/provinces.mjs": "65d16ce0264d442a59bbb34f3512d33426d0951f1ccbcd5d030584ce8ce4aa58",
     "src/stage.html": "220673dcca945d5bcc3335c44678b1dee34ddf14f9aaa201f635a38083b6f953",
     "src/stage.js": "0dc468481bf1d39149bd6e0e63534f6ab245a159b1fd6ffac77434c20ed856be"

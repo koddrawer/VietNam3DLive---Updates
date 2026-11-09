@@ -138,10 +138,21 @@ function renderScores(list) {
 }
 $('scores').addEventListener('click', e => { const b = e.target.closest('button'); if (b) api.invoke('scores', { action: 'add', name: b.dataset.n, delta: +b.dataset.d }); });
 let resetArm = 0;
-$('resetScores').onclick = () => {
-  if (Date.now() - resetArm > 3000) { resetArm = Date.now(); $('resetScores').textContent = 'Bấm lần nữa để xác nhận'; setTimeout(() => $('resetScores').textContent = 'Đặt lại điểm', 3000); return; }
-  api.invoke('scores', { action: 'reset' }); $('resetScores').textContent = 'Đặt lại điểm';
-};
+// nút reset điểm (bấm 2 lần trong 3 giây để xác nhận)
+function armReset(btn, label) {
+  btn.onclick = () => {
+    if (!btn.classList.contains('armed')) {
+      btn.classList.add('armed'); btn.textContent = 'Bấm lần nữa để reset';
+      clearTimeout(btn._t); btn._t = setTimeout(() => { btn.classList.remove('armed'); btn.textContent = label; }, 3000);
+      return;
+    }
+    clearTimeout(btn._t); btn.classList.remove('armed'); btn.textContent = 'Đã reset ✓';
+    api.invoke('scores', { action: 'reset' });
+    setTimeout(() => { btn.textContent = label; }, 1500);
+  };
+}
+armReset($('resetScores'), 'Đặt lại điểm');
+armReset($('resetTop'), '⟲ Reset điểm');
 $('clearUsers').onclick = () => api.invoke('scores', { action: 'clear-users' });
 api.on('scores', renderScores);
 
