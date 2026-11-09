@@ -10,7 +10,7 @@ const CTX = globalThis.__vnlive;
 const { TikTokLiveConnection, WebcastEvent, ControlEvent } = CTX.tiktok;
 const ROOT = CTX.ROOT;            // thư mục gốc gói cài (asar)
 const res = rel => CTX.resolve(rel); // file thực tế: bản cập nhật nếu có, không thì bản gốc
-export const CORE_VERSION = '1.1.1';
+export const CORE_VERSION = '1.1.4';
 const UD = app.getPath('userData');
 const CFG_FILE = path.join(UD, 'config.json');
 const SCORE_FILE = path.join(UD, 'scores.json');
@@ -328,7 +328,7 @@ async function connectTikTok() {
   if (!cfg.apiKey) log('⚠️ Chưa nhập Euler API key — kết nối có thể bị giới hạn hoặc thất bại.');
   if (conn) { try { conn.disconnect(); } catch {} conn = null; }
   toPanel('tt-status', { state: 'connecting', msg: 'Đang kết nối @' + cfg.username + '…' });
-  const c = new TikTokLiveConnection(cfg.username.replace(/^@/, ''), { signApiKey: cfg.apiKey || undefined, processInitialData: false, enableExtendedGiftInfo: true });
+  const c = new TikTokLiveConnection(cfg.username.replace(/^@/, ''), { signApiKey: cfg.apiKey || undefined, processInitialData: false, enableExtendedGiftInfo: false });
   conn = c;
   c.on(WebcastEvent.CHAT, d => { try { handleComment(d.user, d.comment ?? d.content); } catch (e) { log('Lỗi chat: ' + e.message); } });
   c.on(WebcastEvent.GIFT, d => {
@@ -360,6 +360,7 @@ async function connectTikTok() {
   } catch (e) {
     if (conn !== c) return;
     const m = e?.message || String(e);
+    if (/Business plan|PremiumFeature|permission from the signature provider/i.test(m)) log('ℹ️ Lỗi này là tính năng trả phí của Euler. Kiểm tra lại API key, hoặc báo lại để tắt thêm tính năng gây ra.');
     toPanel('tt-status', { state: 'error', msg: m.includes('offline') || e?.name === 'UserOfflineError' ? 'Tài khoản đang không live' : m.slice(0, 160) });
     log('❌ Kết nối TikTok thất bại: ' + m);
     if (connWanted && cfg.autoReconnect) reconnectT = setTimeout(connectTikTok, 20000);
