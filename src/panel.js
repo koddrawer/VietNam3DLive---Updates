@@ -9,13 +9,13 @@ const init = await api.invoke('init');
 cfg = init.cfg;
 
 // ── fields bound to config ──
-const TEXT = ['username', 'apiKey', 'title', 'subtitle', 'ttsUrl', 'vieneuDir', 'bgmPath', 'updateRepo'];
-const CHECK = ['autoReconnect', 'alwaysOnTop', 'ttsEnabled', 'voiceComments', 'fallbackVoice', 'vieneuGpu', 'autoStartVieneu', 'bgmEnabled', 'bgmShuffle', 'sfxEnabled', 'fwSfx', 'autoUpdate'];
+const TEXT = ['username', 'apiKey', 'title', 'subtitle', 'ttsUrl', 'vieneuDir', 'bgmPath', 'updateRepo', 'tierTitle'];
+const CHECK = ['autoReconnect', 'alwaysOnTop', 'ttsEnabled', 'voiceComments', 'fallbackVoice', 'vieneuGpu', 'autoStartVieneu', 'bgmEnabled', 'bgmShuffle', 'sfxEnabled', 'fwSfx', 'autoUpdate', 'showTierBoard'];
 const NUM = ['pointCooldownSec', 'showCooldownSec', 'commentHoldSec', 'idleHomeSec'];
 const set = patch => api.invoke('set-config', patch).then(c => { cfg = c; });
 function fill() {
   for (const k of TEXT) $(k).value = cfg[k] ?? '';
-  for (const k of CHECK) $(k).checked = !!cfg[k];
+  for (const k of CHECK) $(k).checked = k === 'showTierBoard' ? cfg[k] !== false : !!cfg[k];
   for (const k of NUM) $(k).value = cfg[k];
   $('resolution').value = cfg.resolution; $('windowScale').value = cfg.windowScale; $('wsv').textContent = cfg.windowScale + '%';
   $('ttsVolume').value = cfg.ttsVolume; $('volv').textContent = Math.round(cfg.ttsVolume * 100) + '%';
@@ -54,7 +54,22 @@ function setVoices(list) {
 $('refreshVoices').onclick = async () => { const l = await api.invoke('tts', { action: 'voices' }); if (l) setVoices(l); else addLog('Không lấy được danh sách giọng — VieNeu chưa chạy?'); };
 
 // ── tiers ──
+const autoDesc = t => t.fireworks ? `Avatar to ${t.secs || 60}s + pháo hoa` : t.effect === 'hang' ? `Treo avatar ${t.secs || 30}s` : t.effect === 'glow' ? 'Avatar tỏa sáng' : 'Zoom cận avatar';
+const escA = v => String(v ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+function renderTierText() {
+  $('tierText').innerHTML = cfg.tiers.map((t, i) => `<tr>
+    <td><input type="text" data-i="${i}" data-k="coinText" value="${escA(t.coinText)}" placeholder="${t.coins} xu"></td>
+    <td><input type="text" data-i="${i}" data-k="label" value="${escA(t.label)}" placeholder="${escA(autoDesc(t))}"></td>
+    <td><input type="text" data-i="${i}" data-k="pointText" value="${escA(t.pointText)}" placeholder="+${t.points}"></td></tr>`).join('');
+}
+$('tierText').addEventListener('change', e => {
+  const el = e.target; const i = +el.dataset.i, k = el.dataset.k; if (!k) return;
+  const tiers = cfg.tiers.map(t => ({ ...t }));
+  if (el.value === '') delete tiers[i][k]; else tiers[i][k] = el.value.trim() || ' ';
+  set({ tiers });
+});
 function renderTiers() {
+  renderTierText();
   $('tiers').innerHTML = cfg.tiers.map((t, i) => `<tr>
     <td><input type="number" min="1" data-i="${i}" data-k="coins" value="${t.coins}"></td>
     <td><input type="number" min="0" data-i="${i}" data-k="points" value="${t.points}"></td>

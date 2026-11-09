@@ -134,8 +134,9 @@ function viewOf(anchor, dist) { return { t: anchor.clone(), p: new THREE.Vector3
 // ── bảng xếp hạng / bậc donate ──
 function renderTiers() {
   const desc = t => t.fireworks ? `Avatar to ${t.secs || 60}s + pháo hoa` : t.effect === 'hang' ? `Treo avatar ${t.secs || 30}s` : t.effect === 'glow' ? 'Avatar tỏa sáng' : 'Zoom cận avatar';
-  $('tiers').innerHTML = '<h3>TẶNG QUÀ</h3>' + [...cfg.tiers].sort((a, b) => a.coins - b.coins)
-    .map(t => `<div><span>${t.coins} xu<small>${desc(t)}</small></span><b>+${t.points}</b></div>`).join('');
+  $('tiers').hidden = cfg.showTierBoard === false;
+  $('tiers').innerHTML = `<h3>${esc(cfg.tierTitle || 'TẶNG QUÀ')}</h3>` + [...cfg.tiers].sort((a, b) => a.coins - b.coins)
+    .map(t => `<div><span>${esc(t.coinText || t.coins + ' xu')}<small>${esc(t.label ?? desc(t))}</small></span><b>${esc(t.pointText || '+' + t.points)}</b></div>`).join('');
 }
 let lastTop = [];
 function renderBoard(list, changed = []) {
