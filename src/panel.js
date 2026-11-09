@@ -1,0 +1,151 @@
+const api = window.api;
+const $ = id => document.getElementById(id);
+const PRESET_VOICES = ['Ngọc Huyền', 'Hải Đăng', 'Mai Anh', 'Trúc Ly', 'Thiện Minh', 'Thùy Dung', 'Thiền Tâm Đức', 'Quang Sơn', 'Ngọc Trân', 'Adam bựa',
+  'Minh Đức', 'Phạm Tuyên', 'Xuân Vĩnh', 'Thanh Bình', 'Ngọc Linh', 'Đoan Trang', 'Quỳnh Anh', 'Quốc Tuấn', 'Adam', 'Thái Sơn', 'Thục Đoan', 'Minh Triết', 'Mỹ Duyên', 'Đức Trí', 'Kim Thanh'];
+const EFFECTS = { zoom: 'Zoom cận avatar', glow: 'Avatar + comment tỏa sáng', hang: 'Treo avatar trên tỉnh' };
+let cfg = {};
+
+const init = await api.invoke('init');
+cfg = init.cfg;
+
+// ── fields bound to config ──
+const TEXT = ['username', 'apiKey', 'title', 'subtitle', 'ttsUrl', 'vieneuDir', 'bgmPath', 'updateRepo'];
+const CHECK = ['autoReconnect', 'alwaysOnTop', 'ttsEnabled', 'voiceComments', 'fallbackVoice', 'vieneuGpu', 'autoStartVieneu', 'bgmEnabled', 'bgmShuffle', 'sfxEnabled', 'fwSfx', 'autoUpdate'];
+const NUM = ['pointCooldownSec', 'showCooldownSec', 'commentHoldSec', 'idleHomeSec'];
+const set = patch => api.invoke('set-config', patch).then(c => { cfg = c; });
+function fill() {
+  for (const k of TEXT) $(k).value = cfg[k] ?? '';
+  for (const k of CHECK) $(k).checked = !!cfg[k];
+  for (const k of NUM) $(k).value = cfg[k];
+  $('resolution').value = cfg.resolution; $('windowScale').value = cfg.windowScale; $('wsv').textContent = cfg.windowScale + '%';
+  $('ttsVolume').value = cfg.ttsVolume; $('volv').textContent = Math.round(cfg.ttsVolume * 100) + '%';
+  for (const k of SLIDE) { $(k).value = cfg[k]; $(k + 'v').textContent = Math.round(cfg[k] * 100) + '%'; }
+  setVoices(null); renderTiers();
+}
+for (const k of TEXT) $(k).addEventListener('change', e => set({ [k]: e.target.value.trim() }));
+for (const k of CHECK) $(k).addEventListener('change', e => set({ [k]: e.target.checked }));
+for (const k of NUM) $(k).addEventListener('change', e => set({ [k]: Math.max(0, +e.target.value || 0) }));
+$('resolution').onchange = e => set({ resolution: e.target.value });
+$('windowScale').oninput = e => { $('wsv').textContent = e.target.value + '%'; };
+$('windowScale').onchange = e => set({ windowScale: +e.target.value });
+$('ttsVolume').oninput = e => { $('volv').textContent = Math.round(e.target.value * 100) + '%'; };
+$('ttsVolume').onchange = e => set({ ttsVolume: +e.target.value });
+$('voice').onchange = e => set({ voice: e.target.value });
+const SLIDE = ['bgmVolume', 'bgmDuck', 'sfxVolume'];
+for (const k of SLIDE) { $(k).oninput = e => { $(k + 'v').textContent = Math.round(e.target.value * 100) + '%'; }; $(k).onchange = e => set({ [k]: +e.target.value }); }
+$('pickBgmFile').onclick = async () => { const f = await api.invoke('pick-file', 'bgm'); if (f) { $('bgmPath').value = f; set({ bgmPath: f, bgmEnabled: true }).then(fill); } };
+$('pickBgmDir').onclick = async () => { const f = await api.invoke('pick-file', 'bgm-dir'); if (f) { $('bgmPath').value = f; set({ bgmPath: f, bgmEnabled: true }).then(fill); } };
+// cập nhật
+function showUpd(u) {
+  const p = $('updPill'); p.textContent = 'v' + u.version; p.className = 'pill ' + (u.state === 'ready' ? 'connecting' : u.state === 'error' ? 'error' : 'on');
+  $('updMsg').textContent = u.msg || `Bản đang chạy ${u.version} (file exe ${u.shell}) · repo ${u.repo}`;
+  $('restartUpd').hidden = u.state !== 'ready';
+}
+$('checkUpd').onclick = async () => showUpd(await api.invoke('update', 'check'));
+$('restartUpd').onclick = () => api.invoke('update', 'restart');
+api.on('update-status', showUpd);
+
+function setVoices(list) {
+  const vs = list && list.length ? list : PRESET_VOICES;
+  const cur = cfg.voice;
+  $('voice').innerHTML = [...new Set([cur, ...vs].filter(Boolean))].map(v => `<option>${v}</option>`).join('');
+  $('voice').value = cur;
+}
+$('refreshVoices').onclick = async () => { const l = await api.invoke('tts', { action: 'voices' }); if (l) setVoices(l); else addLog('Không lấy được danh sách giọng — VieNeu chưa chạy?'); };
+
+// ── tiers ──
+function renderTiers() {
+  $('tiers').innerHTML = cfg.tiers.map((t, i) => `<tr>
+    <td><input type="number" min="1" data-i="${i}" data-k="coins" value="${t.coins}"></td>
+    <td><input type="number" min="0" data-i="${i}" data-k="points" value="${t.points}"></td>
+    <td><select data-i="${i}" data-k="effect">${Object.entries(EFFECTS).map(([k, v]) => `<option value="${k}" ${t.effect === k ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+    <td><input type="number" min="5" data-i="${i}" data-k="secs" value="${t.secs || ''}" ${t.effect === 'hang' ? '' : 'disabled'}></td>
+    <td><input type="checkbox" data-i="${i}" data-k="fireworks" ${t.fireworks ? 'checked' : ''}></td>
+    <td><button data-sfx="${i}" title="${t.sfx || 'Âm mặc định'}">${t.sfx ? '♪ ' + t.sfx.split(/[\\/]/).pop().slice(0, 14) : 'Mặc định'}</button>${t.sfx ? ` <button data-sfxclr="${i}" title="Dùng âm mặc định">×</button>` : ''}</td></tr>`).join('');
+}
+$('tiers').addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const tiers = cfg.tiers.map(t => ({ ...t }));
+  if (b.dataset.sfx != null) { const f = await api.invoke('pick-file', 'sfx'); if (!f) return; tiers[+b.dataset.sfx].sfx = f; }
+  else if (b.dataset.sfxclr != null) delete tiers[+b.dataset.sfxclr].sfx;
+  else return;
+  set({ tiers }).then(renderTiers);
+});
+$('tiers').addEventListener('change', e => {
+  const el = e.target; const i = +el.dataset.i, k = el.dataset.k; if (!k) return;
+  const tiers = cfg.tiers.map(t => ({ ...t }));
+  tiers[i][k] = el.type === 'checkbox' ? el.checked : el.tagName === 'SELECT' ? el.value : +el.value;
+  if (k === 'effect' && el.value === 'hang') { tiers[i].secs ||= 30; tiers[i].size ||= 'md'; }
+  if (k === 'fireworks') tiers[i].size = el.checked ? 'lg' : (tiers[i].size || 'md');
+  set({ tiers }).then(renderTiers);
+});
+
+// ── TikTok ──
+$('connect').onclick = async () => { await set({ username: $('username').value.trim().replace(/^@/, ''), apiKey: $('apiKey').value.trim() }); api.invoke('tiktok', 'connect'); };
+$('disconnect').onclick = () => api.invoke('tiktok', 'disconnect');
+api.on('tt-status', s => { const p = $('ttPill'); p.className = 'pill ' + s.state; p.textContent = 'TikTok: ' + ({ on: 'đã kết nối', connecting: 'đang kết nối', error: 'lỗi', off: 'chưa kết nối' }[s.state] || s.state); $('ttMsg').textContent = s.msg || ''; });
+
+// ── stage ──
+$('openStage').onclick = () => api.invoke('stage', 'open');
+$('closeStage').onclick = () => api.invoke('stage', 'close');
+$('home').onclick = () => api.invoke('stage', 'home');
+$('reloadStage').onclick = () => api.invoke('stage', 'reload');
+$('openData').onclick = () => api.invoke('open-data');
+api.on('stage-open', o => { $('openStage').textContent = o ? 'Màn hình live đang mở' : 'Mở màn hình live'; });
+
+// ── TTS ──
+api.on('tts-status', s => {
+  for (const id of ['ttsPill', 'ttsPill2']) { const p = $(id); p.className = 'pill ' + (s.online ? 'on' : s.online === false ? 'error' : ''); p.textContent = (id === 'ttsPill' ? 'VieNeu: ' : '') + (s.online ? 'sẵn sàng' : s.online === false ? 'không kết nối' : '—') + (s.queue ? ` · chờ ${s.queue}` : ''); }
+});
+$('testVoice').onclick = () => api.invoke('tts', { action: 'test', text: $('testText').value });
+$('clearQ').onclick = () => api.invoke('tts', { action: 'clear' });
+$('installVieneu').onclick = () => api.invoke('tts', { action: 'install' });
+$('startVieneu').onclick = () => api.invoke('tts', { action: 'start' });
+$('stopVieneu').onclick = () => api.invoke('tts', { action: 'stop' });
+$('clearCache').onclick = () => api.invoke('tts', { action: 'clear-cache' });
+$('pickDir').onclick = async () => { const d = await api.invoke('pick-dir'); if (d) { $('vieneuDir').value = d; set({ vieneuDir: d }); } };
+api.on('vieneu-log', l => { const b = $('vlog'); b.textContent += l + '\n'; if (b.textContent.length > 20000) b.textContent = b.textContent.slice(-15000); b.scrollTop = b.scrollHeight; });
+api.on('vieneu-running', r => { $('startVieneu').textContent = r ? 'VieNeu đang chạy' : 'Khởi động VieNeu'; });
+api.on('config', c => { cfg = c; });
+
+// ── scores ──
+function renderScores(list) {
+  $('scores').innerHTML = list.map((r, i) => `<div class="sr"><span class="k">${i + 1}</span><span class="n">${r.name}</span><b>${r.score.toLocaleString('vi-VN')}</b><button data-n="${r.name}" data-d="-1">−</button><button data-n="${r.name}" data-d="1">+</button></div>`).join('');
+}
+$('scores').addEventListener('click', e => { const b = e.target.closest('button'); if (b) api.invoke('scores', { action: 'add', name: b.dataset.n, delta: +b.dataset.d }); });
+let resetArm = 0;
+$('resetScores').onclick = () => {
+  if (Date.now() - resetArm > 3000) { resetArm = Date.now(); $('resetScores').textContent = 'Bấm lần nữa để xác nhận'; setTimeout(() => $('resetScores').textContent = 'Đặt lại điểm', 3000); return; }
+  api.invoke('scores', { action: 'reset' }); $('resetScores').textContent = 'Đặt lại điểm';
+};
+$('clearUsers').onclick = () => api.invoke('scores', { action: 'clear-users' });
+api.on('scores', renderScores);
+
+// ── simulator ──
+$('simProv').innerHTML += init.provinces.map(p => `<option>${p.name}</option>`).join('');
+$('simComment').onclick = () => api.invoke('simulate', { type: 'comment', province: $('simProv').value || null });
+$('simBurst').onclick = () => { for (let i = 0; i < 10; i++) setTimeout(() => api.invoke('simulate', { type: 'comment' }), i * 250); };
+$('simGifts').innerHTML = cfg.tiers.map(t => `<button data-c="${t.coins}">Tặng ${t.coins} xu</button>`).join('');
+$('simGifts').onclick = e => { const b = e.target.closest('button'); if (b) api.invoke('simulate', { type: 'gift', coins: +b.dataset.c, province: $('simProv').value || null }); };
+$('simNoProv').onclick = () => api.invoke('simulate', { type: 'gift', coins: 10, noProvince: true });
+
+// ── greetings ──
+$('openGreet').onclick = () => api.invoke('greetings', 'open');
+$('reloadGreet').onclick = () => api.invoke('greetings', 'reload');
+$('restoreGreet').onclick = () => api.invoke('greetings', 'restore');
+
+// ── feed & log ──
+const esc = s => String(s ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+api.on('feed', f => {
+  const b = $('feed'); const d = document.createElement('div'); if (f.kind === 'gift') d.className = 'g';
+  d.innerHTML = `${new Date().toLocaleTimeString('vi-VN')}  ${f.kind === 'gift' ? '🎁 ' : ''}<b>${esc(f.name)}</b>: ${esc(f.text)}${f.province ? ` <i>→ ${esc(f.province)}</i>` : ''}`;
+  b.appendChild(d); while (b.children.length > 200) b.firstChild.remove(); b.scrollTop = b.scrollHeight;
+});
+function addLog(l) { const b = $('log'); b.textContent += l + '\n'; if (b.textContent.length > 30000) b.textContent = b.textContent.slice(-20000); b.scrollTop = b.scrollHeight; }
+api.on('log', addLog);
+init.logs.forEach(addLog);
+
+fill();
+showUpd(init.update);
+renderScores(init.scores);
+api.invoke('tts', { action: 'health' });

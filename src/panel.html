@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Việt Nam 3D Live — Bảng điều khiển</title>
+<link rel="stylesheet" href="vendor/fonts/be-vietnam-pro/400.css">
+<link rel="stylesheet" href="vendor/fonts/be-vietnam-pro/600.css">
+<link rel="stylesheet" href="vendor/fonts/be-vietnam-pro/800.css">
+<style>
+:root{--bg:#0f1418;--card:#172026;--card2:#1d2830;--ink:#e9eef0;--ink2:#93a6ae;--line:#2a3740;--gold:#ffcf4a;--red:#e8382f;--ok:#3ecf7a;--warn:#ffb21e;--f:"Be Vietnam Pro",system-ui,"Segoe UI",sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--f)}
+header{display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:3}
+header h1{margin:0;font-size:18px;font-weight:800;color:var(--gold);letter-spacing:.02em}
+header .sp{flex:1}
+.pill{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:3px 11px;font-size:12.5px;font-weight:600;background:var(--card2);white-space:nowrap}
+.pill::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ink2)}
+.pill.on::before{background:var(--ok)}.pill.connecting::before{background:var(--warn)}.pill.error::before{background:var(--red)}
+main{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:14px;padding:14px 18px 24px}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+h2{margin:0;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2);font-weight:800;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.r{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.r>label.f{flex:1;min-width:150px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--ink2);font-weight:600}
+input[type=text],input[type=password],input[type=number],select{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:7px 9px;font:inherit;font-size:13.5px;width:100%;min-width:0}
+input[type=range]{width:100%;accent-color:var(--gold)}
+.ck{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer}
+button{background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:7px 12px;font:600 13px var(--f);cursor:pointer;white-space:nowrap}
+button:hover{border-color:var(--gold)}
+button.pri{background:var(--gold);color:#2b1c00;border-color:var(--gold)}
+button.dan{border-color:#6b2a26;color:#ffb3ad}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+.note{font-size:12px;color:var(--ink2);margin:0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:4px 5px;border-bottom:1px solid var(--line);text-align:left}
+th{font-size:11px;color:var(--ink2);text-transform:uppercase;letter-spacing:.06em}
+td input,td select{padding:4px 6px}
+.scores{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 14px;max-height:430px;overflow:auto}
+.sr{display:grid;grid-template-columns:24px minmax(0,1fr) auto auto auto;gap:6px;align-items:center;padding:3px 0;border-bottom:1px solid var(--line)}
+.sr .k{color:var(--ink2);font-size:12px;font-variant-numeric:tabular-nums}.sr .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sr b{color:var(--gold);font-variant-numeric:tabular-nums;min-width:44px;text-align:right}
+.sr button{padding:1px 7px;font-size:12px}
+.box{background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:8px;height:170px;overflow:auto;font:12px/1.5 ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-word}
+.feed div{padding:2px 0;border-bottom:1px solid #1b252c}.feed .g{color:var(--gold)}.feed i{font-style:normal;color:var(--ok)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (max-width:980px){main{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>★ VIỆT NAM 3D LIVE</h1>
+  <span class="pill" id="ttPill">TikTok: chưa kết nối</span>
+  <span class="pill" id="ttsPill">VieNeu: đang kiểm tra</span>
+  <span class="sp"></span>
+  <button id="openStage" class="pri">Mở màn hình live</button>
+  <button id="openData">Thư mục dữ liệu</button>
+</header>
+<main>
+<div class="col">
+  <section>
+    <h2>Kết nối TikTok (Euler)</h2>
+    <div class="r">
+      <label class="f">Username TikTok (không cần @)<input type="text" id="username" placeholder="vd: tenkenh"></label>
+      <label class="f">Euler API key<input type="password" id="apiKey" placeholder="lấy tại eulerstream.com"></label>
+    </div>
+    <div class="r">
+      <button class="pri" id="connect">Kết nối</button><button id="disconnect">Ngắt</button>
+      <label class="ck"><input type="checkbox" id="autoReconnect"> Tự kết nối lại khi rớt</label>
+    </div>
+    <p class="note" id="ttMsg">Bạn phải đang LIVE thì mới kết nối được.</p>
+  </section>
+
+  <section>
+    <h2>Màn hình live 9:16</h2>
+    <div class="r">
+      <label class="f">Độ phân giải xuất<select id="resolution"><option value="1080x1920">1080 × 1920 (Full HD)</option><option value="720x1280">720 × 1280 (HD)</option><option value="540x960">540 × 960</option></select></label>
+      <label class="f">Kích thước cửa sổ: <span id="wsv">50%</span><input type="range" id="windowScale" min="25" max="100" step="5"></label>
+    </div>
+    <p class="note">Cửa sổ 100% = đúng độ phân giải xuất (ví dụ 1080×1920 thật). Màn hình nhỏ hơn thì để 50% vẫn hiển thị đủ khung, chỉ nét kém hơn khi TikTok LIVE Studio quét cửa sổ.</p>
+    <div class="r">
+      <label class="f">Tiêu đề<input type="text" id="title"></label>
+      <label class="f">Dòng phụ<input type="text" id="subtitle"></label>
+    </div>
+    <div class="r">
+      <label class="ck"><input type="checkbox" id="alwaysOnTop"> Luôn nằm trên</label>
+      <span class="sp" style="flex:1"></span>
+      <button id="home">Về toàn cảnh</button><button id="reloadStage">Tải lại màn hình</button><button id="closeStage">Đóng</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Giọng đọc VieNeu-TTS <span class="pill" id="ttsPill2">—</span></h2>
+    <div class="r">
+      <label class="f">Địa chỉ server<input type="text" id="ttsUrl"></label>
+      <label class="f">Giọng<select id="voice"></select></label>
+      <button id="refreshVoices" title="Lấy danh sách giọng từ server">↻</button>
+    </div>
+    <div class="r">
+      <label class="f">Âm lượng: <span id="volv"></span><input type="range" id="ttsVolume" min="0" max="1.5" step="0.05"></label>
+    </div>
+    <div class="r">
+      <label class="ck"><input type="checkbox" id="ttsEnabled"> Bật giọng đọc</label>
+      <label class="ck"><input type="checkbox" id="voiceComments"> Chào người comment</label>
+      <label class="ck"><input type="checkbox" id="fallbackVoice"> Giọng Windows dự phòng khi VieNeu lỗi</label>
+    </div>
+    <div class="r">
+      <input type="text" id="testText" value="Xin chào cả nhà, mời mọi người comment tên tỉnh của mình nha!" style="flex:1">
+      <button id="testVoice">Đọc thử</button><button id="clearQ">Xóa hàng chờ</button>
+    </div>
+    <div class="r">
+      <label class="f">Thư mục VieNeu-TTS<input type="text" id="vieneuDir" placeholder="vd: C:\Users\ban\VieNeu-TTS"></label>
+      <button id="pickDir">Chọn…</button>
+    </div>
+    <div class="r">
+      <label class="ck"><input type="checkbox" id="vieneuGpu"> Máy có GPU NVIDIA</label>
+      <label class="ck"><input type="checkbox" id="autoStartVieneu"> Tự khởi động khi mở app</label>
+    </div>
+    <div class="r">
+      <button id="installVieneu">Cài đặt VieNeu (lần đầu)</button>
+      <button class="pri" id="startVieneu">Khởi động VieNeu</button>
+      <button id="stopVieneu">Dừng</button>
+      <button id="clearCache">Xóa cache giọng</button>
+    </div>
+    <div class="box" id="vlog" style="height:110px"></div>
+  </section>
+
+  <section>
+    <h2>Nhạc nền & âm thanh</h2>
+    <div class="r">
+      <label class="ck"><input type="checkbox" id="bgmEnabled"> Bật nhạc nền</label>
+      <label class="ck"><input type="checkbox" id="bgmShuffle"> Phát ngẫu nhiên</label>
+    </div>
+    <div class="r">
+      <label class="f">File nhạc hoặc thư mục nhạc<input type="text" id="bgmPath" placeholder="mp3, m4a, ogg, wav…"></label>
+      <button id="pickBgmFile">Chọn file…</button><button id="pickBgmDir">Chọn thư mục…</button>
+    </div>
+    <div class="grid2">
+      <label class="f">Âm lượng nhạc: <span id="bgmVolumev"></span><input type="range" id="bgmVolume" min="0" max="1" step="0.05"></label>
+      <label class="f">Nhạc nhỏ lại khi đọc còn: <span id="bgmDuckv"></span><input type="range" id="bgmDuck" min="0" max="1" step="0.05"></label>
+    </div>
+    <p class="note" id="bgmInfo"></p>
+    <div class="r">
+      <label class="ck"><input type="checkbox" id="sfxEnabled"> Âm thanh khi donate</label>
+      <label class="ck"><input type="checkbox" id="fwSfx"> Tiếng nổ pháo hoa</label>
+    </div>
+    <label class="f">Âm lượng hiệu ứng: <span id="sfxVolumev"></span><input type="range" id="sfxVolume" min="0" max="1.5" step="0.05"></label>
+    <p class="note">Mỗi bậc quà có âm mặc định (xu rơi, chuông, lấp lánh, kèn). Muốn dùng âm riêng thì chọn ở cột "Âm thanh" trong bảng luật bên dưới.</p>
+  </section>
+
+  <section>
+    <h2>Luật điểm & quà</h2>
+    <table>
+      <thead><tr><th>Xu ≥</th><th>Điểm</th><th>Hiệu ứng</th><th>Treo (giây)</th><th>Pháo hoa</th><th>Âm thanh</th></tr></thead>
+      <tbody id="tiers"></tbody>
+    </table>
+    <p class="note">Quà lẻ (vd 50 xu) dùng hiệu ứng của bậc gần nhất bên dưới, điểm tính theo tỉ lệ bậc đó (50 xu → 50 × 200/30 ≈ 333 điểm).</p>
+    <div class="grid2">
+      <label class="f">Mỗi người chỉ được +1 điểm/… giây<input type="number" id="pointCooldownSec" min="0" step="1"></label>
+      <label class="f">Mỗi người được zoom + chào lại sau … giây<input type="number" id="showCooldownSec" min="0" step="1"></label>
+      <label class="f">Thời gian dừng ở mỗi comment (giây)<input type="number" id="commentHoldSec" min="1" step="0.5"></label>
+      <label class="f">Về toàn cảnh sau … giây rảnh<input type="number" id="idleHomeSec" min="1" step="1"></label>
+    </div>
+  </section>
+</div>
+
+<div class="col">
+  <section>
+    <h2>Bảng điểm 34 tỉnh <span class="r"><button id="clearUsers" title="Quên tỉnh mà người xem đã chọn">Quên tỉnh người xem</button><button class="dan" id="resetScores">Đặt lại điểm</button></span></h2>
+    <div class="scores" id="scores"></div>
+  </section>
+
+  <section>
+    <h2>Thử nghiệm (không cần live)</h2>
+    <div class="r">
+      <label class="f">Tỉnh<select id="simProv"><option value="">Ngẫu nhiên</option></select></label>
+      <button id="simComment">Comment thử</button>
+      <button id="simBurst">10 comment liên tiếp</button>
+    </div>
+    <div class="r" id="simGifts"></div>
+    <div class="r"><button id="simNoProv">Tặng 10 xu khi chưa có tỉnh</button><span class="note">→ sau đó bấm "Comment thử" sẽ không áp vào người này; dùng để xem lời nhắc comment tên tỉnh.</span></div>
+  </section>
+
+  <section>
+    <h2>Cập nhật <span class="pill" id="updPill">—</span></h2>
+    <div class="r">
+      <label class="f">Repo GitHub (chủ/tên-repo)<input type="text" id="updateRepo"></label>
+      <label class="ck"><input type="checkbox" id="autoUpdate"> Tự cập nhật</label>
+    </div>
+    <div class="r"><button id="checkUpd">Kiểm tra cập nhật</button><button class="pri" id="restartUpd" hidden>Khởi động lại để dùng bản mới</button></div>
+    <p class="note" id="updMsg"></p>
+  </section>
+
+  <section>
+    <h2>Lời chào & cảm ơn</h2>
+    <p class="note">Mỗi tỉnh có 5 lời chào, 3 câu cảm ơn ngắn, 2 câu chúc mừng (chỉ đọc khi treo avatar/pháo hoa). Sửa trong file greetings.json.</p>
+    <div class="r"><button id="openGreet">Mở file lời chào</button><button class="pri" id="reloadGreet">Nạp lại lời chào</button><button id="restoreGreet">Khôi phục mặc định</button></div>
+  </section>
+
+  <section>
+    <h2>Comment & quà gần đây</h2>
+    <div class="box feed" id="feed"></div>
+  </section>
+  <section>
+    <h2>Nhật ký</h2>
+    <div class="box" id="log"></div>
+  </section>
+</div>
+</main>
+<script type="module" src="panel.js"></script>
+</body>
+</html>

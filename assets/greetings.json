@@ -1,0 +1,652 @@
+{
+  "_huong_dan": "Sửa thoải mái rồi bấm 'Nạp lại lời chào'. {ten}=tên người xem, {tinh}=tên tỉnh, {xu}=số xu, {diem}=điểm được cộng, {tong}=tổng điểm tỉnh. greet=chào khi comment; thanks=cảm ơn khi donate; cheer=chúc mừng (chỉ đọc khi quà treo avatar/pháo hoa). Câu donate = thanks + 1 câu theo bậc (generic.tier).",
+  "generic": {
+    "greet": [
+      "Chào {ten} đến từ {tinh}, cảm ơn bạn đã ghé live nha!",
+      "Xin chào {ten}, {tinh} vừa được cộng thêm một điểm rồi đó!",
+      "{ten} ơi, chào bạn nhé, {tinh} đang có {tong} điểm rồi!",
+      "Hello {ten}, người {tinh} có mặt, cả nhà vỗ tay nào!"
+    ],
+    "tier": {
+      "zoom": [
+        "{tinh} cộng {diem} điểm!",
+        "Cộng {diem} điểm cho {tinh}!"
+      ],
+      "glow": [
+        "{tinh} bừng sáng, cộng {diem} điểm!",
+        "Cộng {diem} điểm, {tinh} tỏa sáng!"
+      ],
+      "hang": [
+        "Treo ảnh lên {tinh}, cộng {diem} điểm!",
+        "{tinh} cộng {diem} điểm!"
+      ],
+      "mega": [
+        "Bắn pháo hoa! {tinh} cộng {diem} điểm!",
+        "Quá đỉnh! {tinh} cộng {diem} điểm!"
+      ]
+    },
+    "ask_province": [
+      "Cảm ơn {ten}! Comment tên tỉnh để cộng điểm nhé!",
+      "Cảm ơn {ten}! Bạn ở tỉnh nào, comment nhé!"
+    ],
+    "thanks": [
+      "Cảm ơn {ten} nhiều nha!",
+      "Cảm ơn {ten}!"
+    ]
+  },
+  "provinces": {
+    "Hà Nội": {
+      "greet": [
+        "Chào {ten} đến từ thủ đô Hà Nội nghìn năm văn hiến!",
+        "Người Hà Nội đây rồi! Chào {ten}, sáng nay đã ăn bát phở nào chưa?",
+        "{ten} ơi, gửi chút gió Hồ Gươm vào live đi bạn!",
+        "Chào {ten}, Hà Nội ba mươi sáu phố phường điểm danh!",
+        "Xin chào {ten}, chúc bạn một ngày thật thanh lịch kiểu Hà Nội nhé!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, thủ đô chịu chơi quá!",
+        "Cảm ơn {ten}, quà đậm chất Hà Nội!",
+        "Hà Nội ra tay, cảm ơn {ten}!"
+      ],
+      "cheer": [
+        "Chúc mừng thủ đô!",
+        "Hà Nội lên {tong} điểm!"
+      ]
+    },
+    "TP. Hồ Chí Minh": {
+      "greet": [
+        "Chào {ten} đến từ Sài Gòn, thành phố không ngủ!",
+        "Người Sài Gòn đây rồi! Chào {ten}, ly cà phê sữa đá đã sẵn sàng chưa?",
+        "Xin chào {ten}, từ Bình Dương đến Vũng Tàu, Côn Đảo đều là thành phố mình đó nha!",
+        "Chào {ten} nha, chợ Bến Thành gửi lời chào bạn!",
+        "{ten} ơi, dân thành phố điểm danh, chào bạn nhiệt tình luôn!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, Sài Gòn chịu chơi ghê!",
+        "Cảm ơn {ten} nha, thương Sài Gòn!",
+        "Sài Gòn ra tay, cảm ơn {ten}!"
+      ],
+      "cheer": [
+        "Chúc mừng Sài Gòn!",
+        "Thành phố lên {tong} điểm!"
+      ]
+    },
+    "Hải Phòng": {
+      "greet": [
+        "Chào {ten} đến từ thành phố hoa phượng đỏ Hải Phòng!",
+        "Người Hải Phòng đây rồi! {ten} ơi, bánh đa cua hôm nay ngon không?",
+        "Xin chào {ten}, từ Cát Bà đến xứ Đông Hải Dương đều chào bạn!",
+        "Chào {ten}, dân đất Cảng điểm danh nào!",
+        "{ten} ơi, chào bạn, Đồ Sơn lộng gió gửi lời hỏi thăm!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, đất Cảng chơi đẹp!",
+        "Hải Phòng ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten}, phượng đỏ rực rỡ!"
+      ],
+      "cheer": [
+        "Chúc mừng Hải Phòng!",
+        "Đất Cảng lên {tong} điểm!"
+      ]
+    },
+    "Đà Nẵng": {
+      "greet": [
+        "Chào {ten} đến từ Đà Nẵng, thành phố đáng sống!",
+        "Người Đà Nẵng đây rồi! {ten} ơi, cầu Rồng tối nay có phun lửa không?",
+        "Xin chào {ten}, từ phố cổ Hội An đến quần đảo Hoàng Sa đều là nhà mình!",
+        "Chào {ten}, mời bạn một tô mì Quảng nóng hổi nha!",
+        "{ten} ơi, Bà Nà, Mỹ Sơn và biển Mỹ Khê gửi lời chào bạn!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, Đà Nẵng đáng yêu quá!",
+        "Đà Nẵng ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten}, sáng như cầu Rồng!"
+      ],
+      "cheer": [
+        "Chúc mừng Đà Nẵng!",
+        "Đà Nẵng lên {tong} điểm!"
+      ]
+    },
+    "Huế": {
+      "greet": [
+        "Chào {ten} đến từ cố đô Huế mộng mơ!",
+        "Người Huế đây rồi! {ten} ơi, bún bò Huế hôm nay cay không?",
+        "Xin chào {ten}, sông Hương núi Ngự gửi lời chào bạn!",
+        "Chào {ten}, nghe tiếng chuông chùa Thiên Mụ vang lên rồi đó!",
+        "{ten} ơi, chào bạn nhé, Đại Nội Huế điểm danh nào!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, người Huế ngọt ngào!",
+        "Cố đô ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nhiều nghe!"
+      ],
+      "cheer": [
+        "Chúc mừng cố đô Huế!",
+        "Huế lên {tong} điểm!"
+      ]
+    },
+    "Cần Thơ": {
+      "greet": [
+        "Chào {ten} đến từ Cần Thơ, gạo trắng nước trong!",
+        "Người Cần Thơ đây rồi! {ten} ơi, chợ nổi Cái Răng sáng nay đông không?",
+        "Xin chào {ten}, bến Ninh Kiều gửi lời chào bạn nha!",
+        "Chào {ten}, từ Sóc Trăng đến Hậu Giang đều thương bạn hết!",
+        "{ten} ơi, mời bạn cái bánh pía Sóc Trăng nè!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, miền Tây chân tình!",
+        "Cần Thơ ra tay, cảm ơn {ten} nghen!",
+        "Cảm ơn {ten}, thương bến Ninh Kiều!"
+      ],
+      "cheer": [
+        "Chúc mừng Cần Thơ!",
+        "Cần Thơ lên {tong} điểm!"
+      ]
+    },
+    "An Giang": {
+      "greet": [
+        "Chào {ten} đến từ An Giang, nơi có đảo ngọc Phú Quốc!",
+        "Người An Giang đây rồi! {ten} ơi, núi Sam, Châu Đốc có nhớ bạn không?",
+        "Xin chào {ten}, từ Rạch Giá đến Hà Tiên đều chào đón bạn!",
+        "Chào {ten}, rừng tràm Trà Sư mùa nước nổi gửi lời chào nha!",
+        "{ten} ơi, chào bạn, biển Phú Quốc xanh trong đang đợi bạn đó!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, quý như ngọc Phú Quốc!",
+        "An Giang ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nghen!"
+      ],
+      "cheer": [
+        "Chúc mừng An Giang!",
+        "An Giang lên {tong} điểm!"
+      ]
+    },
+    "Bắc Ninh": {
+      "greet": [
+        "Chào {ten} đến từ Bắc Ninh, quê hương quan họ!",
+        "Người Bắc Ninh đây rồi! Người ơi người ở đừng về, chào {ten} nha!",
+        "Xin chào {ten}, mùa vải thiều Lục Ngạn sắp tới chưa bạn?",
+        "Chào {ten}, tranh Đông Hồ và vải thiều Bắc Giang gửi lời chào!",
+        "{ten} ơi, liền anh liền chị Kinh Bắc điểm danh nào!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, người Kinh Bắc thanh lịch!",
+        "Bắc Ninh ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten}, ngọt như vải thiều!"
+      ],
+      "cheer": [
+        "Chúc mừng Bắc Ninh!",
+        "Quê quan họ lên {tong} điểm!"
+      ]
+    },
+    "Cà Mau": {
+      "greet": [
+        "Chào {ten} đến từ Cà Mau, mũi đất cực Nam Tổ quốc!",
+        "Người Cà Mau đây rồi! {ten} ơi, cua Cà Mau hôm nay chắc không?",
+        "Xin chào {ten}, rừng U Minh và Đất Mũi gửi lời chào bạn!",
+        "Chào {ten}, Bạc Liêu cánh đồng điện gió đang quay vì bạn đó!",
+        "{ten} ơi, chào bạn, đờn ca tài tử Bạc Liêu ngân lên rồi!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, chịu chơi như công tử Bạc Liêu!",
+        "Cà Mau ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nghen!"
+      ],
+      "cheer": [
+        "Chúc mừng Cà Mau!",
+        "Cực Nam lên {tong} điểm!"
+      ]
+    },
+    "Cao Bằng": {
+      "greet": [
+        "Chào {ten} đến từ Cao Bằng, nơi có thác Bản Giốc!",
+        "Người Cao Bằng đây rồi! Chào {ten}, hang Pác Bó gửi lời hỏi thăm!",
+        "Xin chào {ten}, núi non Cao Bằng hùng vĩ chào đón bạn!",
+        "Chào {ten}, mời bạn miếng bánh cuốn Cao Bằng nóng hổi nha!",
+        "{ten} ơi, chào bạn từ miền biên cương phía Bắc!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, mát như thác Bản Giốc!",
+        "Cao Bằng ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nhiều nhé!"
+      ],
+      "cheer": [
+        "Chúc mừng Cao Bằng!",
+        "Cao Bằng lên {tong} điểm!"
+      ]
+    },
+    "Đắk Lắk": {
+      "greet": [
+        "Chào {ten} đến từ Đắk Lắk, thủ phủ cà phê!",
+        "Người Đắk Lắk đây rồi! {ten} ơi, ly cà phê Buôn Ma Thuột thơm lừng chưa?",
+        "Xin chào {ten}, từ Bản Đôn đến gành Đá Đĩa Phú Yên đều chào bạn!",
+        "Chào {ten}, Mũi Điện nơi đón bình minh sớm nhất gửi lời chào!",
+        "{ten} ơi, tiếng cồng chiêng Tây Nguyên vang lên chào bạn đó!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, đậm như cà phê Ban Mê!",
+        "Đắk Lắk ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten}, Tây Nguyên hào sảng!"
+      ],
+      "cheer": [
+        "Chúc mừng Đắk Lắk!",
+        "Đắk Lắk lên {tong} điểm!"
+      ]
+    },
+    "Điện Biên": {
+      "greet": [
+        "Chào {ten} đến từ Điện Biên lịch sử!",
+        "Người Điện Biên đây rồi! {ten} ơi, mùa hoa ban trắng đã nở chưa?",
+        "Xin chào {ten}, đồi A1 và cánh đồng Mường Thanh gửi lời chào!",
+        "Chào {ten}, mời bạn ly rượu ngô vùng cao nha!",
+        "{ten} ơi, chào bạn từ miền Tây Bắc xa xôi!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, đẹp như hoa ban!",
+        "Điện Biên ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nhiều nhé!"
+      ],
+      "cheer": [
+        "Chúc mừng Điện Biên!",
+        "Điện Biên lên {tong} điểm!"
+      ]
+    },
+    "Đồng Nai": {
+      "greet": [
+        "Chào {ten} đến từ Đồng Nai!",
+        "Người Đồng Nai đây rồi! {ten} ơi, bưởi Tân Triều ngọt không?",
+        "Xin chào {ten}, rừng Nam Cát Tiên gửi lời chào bạn!",
+        "Chào {ten}, đất điều Bình Phước điểm danh nào!",
+        "{ten} ơi, chào bạn, Biên Hòa có vui không?"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, ngọt như bưởi Tân Triều!",
+        "Đồng Nai ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nha!"
+      ],
+      "cheer": [
+        "Chúc mừng Đồng Nai!",
+        "Đồng Nai lên {tong} điểm!"
+      ]
+    },
+    "Đồng Tháp": {
+      "greet": [
+        "Chào {ten} đến từ Đồng Tháp, đất sen hồng!",
+        "Người Đồng Tháp đây rồi! {ten} ơi, làng hoa Sa Đéc nở rộ chưa?",
+        "Xin chào {ten}, từ Mỹ Tho đến Cao Lãnh đều thương bạn!",
+        "Chào {ten}, mời bạn tô hủ tiếu Mỹ Tho nha!",
+        "{ten} ơi, sếu đầu đỏ Tràm Chim bay về chào bạn đó!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, thơm như sen hồng!",
+        "Đồng Tháp ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nghen!"
+      ],
+      "cheer": [
+        "Chúc mừng Đồng Tháp!",
+        "Đất sen lên {tong} điểm!"
+      ]
+    },
+    "Gia Lai": {
+      "greet": [
+        "Chào {ten} đến từ Gia Lai, đại ngàn và biển cả!",
+        "Người Gia Lai đây rồi! {ten} ơi, Biển Hồ Pleiku hôm nay xanh không?",
+        "Xin chào {ten}, từ phố núi Pleiku đến biển Quy Nhơn đều chào bạn!",
+        "Chào {ten}, đất võ Bình Định điểm danh nào!",
+        "{ten} ơi, Eo Gió Quy Nhơn lộng gió gửi lời chào bạn!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, mạnh như võ Bình Định!",
+        "Gia Lai ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nha!"
+      ],
+      "cheer": [
+        "Chúc mừng Gia Lai!",
+        "Gia Lai lên {tong} điểm!"
+      ]
+    },
+    "Hà Tĩnh": {
+      "greet": [
+        "Chào {ten} đến từ Hà Tĩnh, quê hương Nguyễn Du!",
+        "Người Hà Tĩnh đây rồi! Chào {ten}, kẹo cu đơ ăn chưa bạn?",
+        "Xin chào {ten}, biển Thiên Cầm gửi lời chào nha!",
+        "Chào {ten}, Ngã ba Đồng Lộc thiêng liêng gửi lời hỏi thăm!",
+        "{ten} ơi, chào bạn, người Hà Tĩnh chân thành quá!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, ngọt như kẹo cu đơ!",
+        "Hà Tĩnh ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nhiều nhé!"
+      ],
+      "cheer": [
+        "Chúc mừng Hà Tĩnh!",
+        "Hà Tĩnh lên {tong} điểm!"
+      ]
+    },
+    "Hưng Yên": {
+      "greet": [
+        "Chào {ten} đến từ Hưng Yên, xứ nhãn lồng!",
+        "Người Hưng Yên đây rồi! {ten} ơi, nhãn lồng ngọt không?",
+        "Xin chào {ten}, quê lúa Thái Bình điểm danh nào!",
+        "Chào {ten}, Phố Hiến xưa gửi lời chào bạn!",
+        "{ten} ơi, mời bạn miếng bánh cáy Thái Bình nha!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, ngọt như nhãn lồng!",
+        "Hưng Yên ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nhiều nhé!"
+      ],
+      "cheer": [
+        "Chúc mừng Hưng Yên!",
+        "Hưng Yên lên {tong} điểm!"
+      ]
+    },
+    "Khánh Hòa": {
+      "greet": [
+        "Chào {ten} đến từ Khánh Hòa, nơi có quần đảo Trường Sa!",
+        "Người Khánh Hòa đây rồi! {ten} ơi, biển Nha Trang hôm nay đẹp không?",
+        "Xin chào {ten}, vịnh Vĩnh Hy Ninh Thuận gửi lời chào bạn!",
+        "Chào {ten}, nho Phan Rang ngọt lịm điểm danh nào!",
+        "{ten} ơi, gửi lời chào tới các chiến sĩ Trường Sa luôn nhé!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, quý như yến sào!",
+        "Khánh Hòa ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten}, biển Nha Trang vẫy chào!"
+      ],
+      "cheer": [
+        "Chúc mừng Khánh Hòa!",
+        "Khánh Hòa lên {tong} điểm!"
+      ]
+    },
+    "Lai Châu": {
+      "greet": [
+        "Chào {ten} đến từ Lai Châu, nóc nhà Tây Bắc!",
+        "Người Lai Châu đây rồi! Chào {ten}, đèo Ô Quy Hồ mây phủ chưa?",
+        "Xin chào {ten}, núi Pu Ta Leng gửi lời chào bạn!",
+        "Chào {ten}, cao nguyên Sìn Hồ lộng gió điểm danh nào!",
+        "{ten} ơi, chào bạn từ biên cương Tây Bắc!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, cao như núi Lai Châu!",
+        "Lai Châu ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nhiều nhé!"
+      ],
+      "cheer": [
+        "Chúc mừng Lai Châu!",
+        "Lai Châu lên {tong} điểm!"
+      ]
+    },
+    "Lâm Đồng": {
+      "greet": [
+        "Chào {ten} đến từ Lâm Đồng, xứ sở ngàn hoa!",
+        "Người Lâm Đồng đây rồi! {ten} ơi, Đà Lạt hôm nay se lạnh không?",
+        "Xin chào {ten}, đồi cát Mũi Né và thanh long Bình Thuận gửi lời chào!",
+        "Chào {ten}, hồ Tà Đùng Đắk Nông đẹp mê hồn điểm danh nào!",
+        "{ten} ơi, mời bạn ly sữa đậu nành nóng Đà Lạt nha!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, xinh như hoa Đà Lạt!",
+        "Lâm Đồng ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nha!"
+      ],
+      "cheer": [
+        "Chúc mừng Lâm Đồng!",
+        "Lâm Đồng lên {tong} điểm!"
+      ]
+    },
+    "Lạng Sơn": {
+      "greet": [
+        "Chào {ten} đến từ xứ Lạng!",
+        "Người Lạng Sơn đây rồi! {ten} ơi, vịt quay Lạng Sơn thơm không?",
+        "Xin chào {ten}, đồng Đăng có phố Kỳ Lừa, chào bạn nha!",
+        "Chào {ten}, núi Mẫu Sơn mây mù gửi lời chào!",
+        "{ten} ơi, chào bạn từ cửa ngõ phía Bắc!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, thơm như vịt quay xứ Lạng!",
+        "Lạng Sơn ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nhiều nhé!"
+      ],
+      "cheer": [
+        "Chúc mừng Lạng Sơn!",
+        "Xứ Lạng lên {tong} điểm!"
+      ]
+    },
+    "Lào Cai": {
+      "greet": [
+        "Chào {ten} đến từ Lào Cai, nơi có đỉnh Fansipan!",
+        "Người Lào Cai đây rồi! {ten} ơi, Sa Pa hôm nay có tuyết không?",
+        "Xin chào {ten}, ruộng bậc thang Mù Cang Chải Yên Bái gửi lời chào!",
+        "Chào {ten}, chợ phiên Bắc Hà điểm danh nào!",
+        "{ten} ơi, chào bạn từ nóc nhà Đông Dương!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, cao như Fansipan!",
+        "Lào Cai ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nha!"
+      ],
+      "cheer": [
+        "Chúc mừng Lào Cai!",
+        "Lào Cai lên {tong} điểm!"
+      ]
+    },
+    "Nghệ An": {
+      "greet": [
+        "Chào {ten} đến từ xứ Nghệ, quê Bác!",
+        "Người Nghệ An đây rồi! {ten} ơi, bát cháo lươn nóng chưa?",
+        "Xin chào {ten}, làng Sen Kim Liên gửi lời chào bạn!",
+        "Chào {ten}, biển Cửa Lò điểm danh nào!",
+        "{ten} ơi, câu ví dặm xứ Nghệ ngân lên chào bạn đó!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, xứ Nghệ nghĩa tình!",
+        "Nghệ An ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nhiều nhé!"
+      ],
+      "cheer": [
+        "Chúc mừng xứ Nghệ!",
+        "Nghệ An lên {tong} điểm!"
+      ]
+    },
+    "Ninh Bình": {
+      "greet": [
+        "Chào {ten} đến từ Ninh Bình, cố đô Hoa Lư!",
+        "Người Ninh Bình đây rồi! {ten} ơi, Tràng An, Tam Cốc đẹp không?",
+        "Xin chào {ten}, phở bò Nam Định gửi lời chào nóng hổi!",
+        "Chào {ten}, chùa Tam Chúc Hà Nam điểm danh nào!",
+        "{ten} ơi, chào bạn từ vùng đất cố đô!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, đẹp như Tràng An!",
+        "Ninh Bình ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nhiều nhé!"
+      ],
+      "cheer": [
+        "Chúc mừng Ninh Bình!",
+        "Ninh Bình lên {tong} điểm!"
+      ]
+    },
+    "Phú Thọ": {
+      "greet": [
+        "Chào {ten} đến từ Phú Thọ, đất Tổ vua Hùng!",
+        "Người Phú Thọ đây rồi! Chào {ten}, nhớ ngày giỗ Tổ mùng mười tháng ba nha!",
+        "Xin chào {ten}, Tam Đảo Vĩnh Phúc mây bay gửi lời chào!",
+        "Chào {ten}, Mai Châu Hòa Bình điểm danh nào!",
+        "{ten} ơi, chào bạn từ vùng đất cội nguồn!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, nghĩa tình đất Tổ!",
+        "Phú Thọ ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nhiều nhé!"
+      ],
+      "cheer": [
+        "Chúc mừng đất Tổ!",
+        "Phú Thọ lên {tong} điểm!"
+      ]
+    },
+    "Quảng Ngãi": {
+      "greet": [
+        "Chào {ten} đến từ Quảng Ngãi!",
+        "Người Quảng Ngãi đây rồi! {ten} ơi, tỏi Lý Sơn thơm không?",
+        "Xin chào {ten}, Măng Đen Kon Tum se lạnh gửi lời chào!",
+        "Chào {ten}, đảo Lý Sơn giữa biển điểm danh nào!",
+        "{ten} ơi, mời bạn đĩa cá bống sông Trà nha!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, đậm như tỏi Lý Sơn!",
+        "Quảng Ngãi ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nha!"
+      ],
+      "cheer": [
+        "Chúc mừng Quảng Ngãi!",
+        "Quảng Ngãi lên {tong} điểm!"
+      ]
+    },
+    "Quảng Ninh": {
+      "greet": [
+        "Chào {ten} đến từ Quảng Ninh, nơi có vịnh Hạ Long!",
+        "Người Quảng Ninh đây rồi! {ten} ơi, chả mực Hạ Long giòn không?",
+        "Xin chào {ten}, đỉnh thiêng Yên Tử gửi lời chào bạn!",
+        "Chào {ten}, đất mỏ vùng than điểm danh nào!",
+        "{ten} ơi, chào bạn, Móng Cái và Cô Tô vẫy tay kìa!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, đẹp như vịnh Hạ Long!",
+        "Quảng Ninh ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nhiều nhé!"
+      ],
+      "cheer": [
+        "Chúc mừng Quảng Ninh!",
+        "Quảng Ninh lên {tong} điểm!"
+      ]
+    },
+    "Quảng Trị": {
+      "greet": [
+        "Chào {ten} đến từ Quảng Trị!",
+        "Người Quảng Trị đây rồi! Chào {ten}, cầu Hiền Lương gửi lời chào!",
+        "Xin chào {ten}, động Phong Nha Kẻ Bàng Quảng Bình điểm danh nào!",
+        "Chào {ten}, hang Sơn Đoòng lớn nhất thế giới gửi lời hỏi thăm!",
+        "{ten} ơi, chào bạn từ dải đất miền Trung nắng gió!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, miền Trung nghĩa tình!",
+        "Quảng Trị ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nhiều nhé!"
+      ],
+      "cheer": [
+        "Chúc mừng Quảng Trị!",
+        "Quảng Trị lên {tong} điểm!"
+      ]
+    },
+    "Sơn La": {
+      "greet": [
+        "Chào {ten} đến từ Sơn La!",
+        "Người Sơn La đây rồi! {ten} ơi, đồi chè Mộc Châu xanh mướt chưa?",
+        "Xin chào {ten}, mùa hoa mận Mộc Châu gửi lời chào!",
+        "Chào {ten}, sữa Mộc Châu thơm ngon điểm danh nào!",
+        "{ten} ơi, điệu xòe Tây Bắc dang tay chào bạn đó!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, ngọt như mận Sơn La!",
+        "Sơn La ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nhiều nhé!"
+      ],
+      "cheer": [
+        "Chúc mừng Sơn La!",
+        "Sơn La lên {tong} điểm!"
+      ]
+    },
+    "Tây Ninh": {
+      "greet": [
+        "Chào {ten} đến từ Tây Ninh!",
+        "Người Tây Ninh đây rồi! {ten} ơi, bánh tráng phơi sương ăn chưa?",
+        "Xin chào {ten}, núi Bà Đen gửi lời chào bạn!",
+        "Chào {ten}, gạo nàng thơm Chợ Đào Long An điểm danh nào!",
+        "{ten} ơi, chào bạn, muối tôm Tây Ninh cay cay nè!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, cao như núi Bà Đen!",
+        "Tây Ninh ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nha!"
+      ],
+      "cheer": [
+        "Chúc mừng Tây Ninh!",
+        "Tây Ninh lên {tong} điểm!"
+      ]
+    },
+    "Thái Nguyên": {
+      "greet": [
+        "Chào {ten} đến từ Thái Nguyên, đệ nhất danh trà!",
+        "Người Thái Nguyên đây rồi! {ten} ơi, mời bạn chén chè Tân Cương!",
+        "Xin chào {ten}, hồ Ba Bể Bắc Kạn gửi lời chào!",
+        "Chào {ten}, hồ Núi Cốc điểm danh nào!",
+        "{ten} ơi, chào bạn từ vùng đất trà xanh!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, thơm như chè Tân Cương!",
+        "Thái Nguyên ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nhiều nhé!"
+      ],
+      "cheer": [
+        "Chúc mừng Thái Nguyên!",
+        "Thái Nguyên lên {tong} điểm!"
+      ]
+    },
+    "Thanh Hóa": {
+      "greet": [
+        "Chào {ten} đến từ xứ Thanh!",
+        "Người Thanh Hóa đây rồi! {ten} ơi, nem chua Thanh Hóa ăn chưa?",
+        "Xin chào {ten}, biển Sầm Sơn gửi lời chào bạn!",
+        "Chào {ten}, Thành nhà Hồ và Pù Luông điểm danh nào!",
+        "{ten} ơi, dân xứ Thanh đông vui quá, chào bạn nhé!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, đậm như nem chua xứ Thanh!",
+        "Thanh Hóa ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nhiều nhé!"
+      ],
+      "cheer": [
+        "Chúc mừng xứ Thanh!",
+        "Thanh Hóa lên {tong} điểm!"
+      ]
+    },
+    "Tuyên Quang": {
+      "greet": [
+        "Chào {ten} đến từ Tuyên Quang!",
+        "Người Tuyên Quang đây rồi! Chào {ten}, cột cờ Lũng Cú gửi lời chào!",
+        "Xin chào {ten}, đèo Mã Pì Lèng Hà Giang điểm danh nào!",
+        "Chào {ten}, cây đa Tân Trào lịch sử gửi lời hỏi thăm!",
+        "{ten} ơi, chào bạn từ cực Bắc Tổ quốc!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, cao như cột cờ Lũng Cú!",
+        "Tuyên Quang ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nhiều nhé!"
+      ],
+      "cheer": [
+        "Chúc mừng Tuyên Quang!",
+        "Tuyên Quang lên {tong} điểm!"
+      ]
+    },
+    "Vĩnh Long": {
+      "greet": [
+        "Chào {ten} đến từ Vĩnh Long!",
+        "Người Vĩnh Long đây rồi! {ten} ơi, xứ dừa Bến Tre có ngọt không?",
+        "Xin chào {ten}, chùa Khmer Trà Vinh gửi lời chào bạn!",
+        "Chào {ten}, cù lao An Bình trái cây trĩu cành điểm danh nào!",
+        "{ten} ơi, mời bạn trái dừa xiêm mát lạnh nha!"
+      ],
+      "thanks": [
+        "Cảm ơn {ten}, ngọt như dừa Bến Tre!",
+        "Vĩnh Long ra tay, cảm ơn {ten}!",
+        "Cảm ơn {ten} nghen!"
+      ],
+      "cheer": [
+        "Chúc mừng Vĩnh Long!",
+        "Vĩnh Long lên {tong} điểm!"
+      ]
+    }
+  },
+  "_version": 2
+}

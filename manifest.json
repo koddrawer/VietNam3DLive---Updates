@@ -1,0 +1,15 @@
+{
+  "version": "1.1.1",
+  "minShell": "1.1.0",
+  "notes": "Camera chờ đọc xong lời chào mới chuyển người",
+  "files": {
+    "core.mjs": "042bd0eeed5eb1acefade9c609a757bdd1ac4f29646449dd06cfb397cc415163",
+    "preload.cjs": "29bb4a931981176f1c2188bb46eff380bea0531468f7ae1e89f7043c694f51db",
+    "assets/greetings.json": "a154b2e4e98a14d495454567e790779d3b44ad2d761d656ce2992078a15002d3",
+    "src/panel.html": "0ab167b6a3ab67244d295e4b000cee3e2ff2b6e877e87002d735ca387580d432",
+    "src/panel.js": "dcfa3533b0a2530b4a749881cef5f405cd188e8bbd5b21177c02caa58d3d8e4f",
+    "src/provinces.mjs": "65d16ce0264d442a59bbb34f3512d33426d0951f1ccbcd5d030584ce8ce4aa58",
+    "src/stage.html": "36f14a01205cb4a094c74b21c1b384ddbb9fd67a2f347a8c0dbfcd49c8feca51",
+    "src/stage.js": "4ee6b8dc9e1871f3d0ae5169d6130992a132c0102ba0983fae7eb480f887f41f"
+  }
+}

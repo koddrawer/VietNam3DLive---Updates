@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Việt Nam 3D Live</title>
+<link rel="stylesheet" href="vendor/fonts/be-vietnam-pro/400.css">
+<link rel="stylesheet" href="vendor/fonts/be-vietnam-pro/600.css">
+<link rel="stylesheet" href="vendor/fonts/be-vietnam-pro/700.css">
+<link rel="stylesheet" href="vendor/fonts/be-vietnam-pro/800.css">
+<link rel="stylesheet" href="vendor/fonts/be-vietnam-pro/900.css">
+<style>
+/* Sân khấu 1080×1920 cố định, scale theo cửa sổ. Phong cách: bản đồ địa hình ban đêm, vàng son + đỏ cờ. */
+:root{
+  --sea:#08202e; --ink:#f4efe2; --ink-2:#a9bcc4; --gold:#ffcf4a; --gold-2:#ffb21e; --red:#e8382f; --panel:rgba(6,22,32,.78); --line:rgba(255,255,255,.12);
+  --f:"Be Vietnam Pro",system-ui,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#050e14;overflow:hidden;font-family:var(--f);color:var(--ink)}
+#root{position:absolute;left:0;top:0;width:1080px;height:1920px;transform-origin:0 0;overflow:hidden;background:var(--sea)}
+#gl,#lbl,#fx{position:absolute;inset:0;width:1080px;height:1920px}
+#lbl{pointer-events:none}
+#fx{pointer-events:none;z-index:8}
+
+/* header */
+.hdr{position:absolute;top:0;left:0;right:0;padding:40px 40px 60px;z-index:5;
+  background:linear-gradient(180deg,rgba(4,14,20,.95) 0%,rgba(4,14,20,.75) 60%,rgba(4,14,20,0) 100%)}
+.hdr h1{margin:0;font-weight:900;font-size:76px;letter-spacing:.02em;line-height:1;color:var(--gold);
+  text-shadow:0 4px 0 #a5320f,0 10px 30px rgba(0,0,0,.6)}
+.hdr h1 .star{color:var(--red);font-size:.8em;vertical-align:.08em;margin-right:14px;text-shadow:none}
+.hdr .sub{margin-top:14px;font-size:34px;font-weight:700;color:#fff;display:flex;align-items:center;gap:14px}
+.hdr .sub .chip{background:var(--red);border-radius:12px;padding:4px 16px;font-size:28px}
+
+/* leaderboard */
+.board{position:absolute;left:36px;top:226px;width:500px;z-index:5;background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:20px 22px;backdrop-filter:blur(6px)}
+.board h3{margin:0 0 12px;font-size:24px;letter-spacing:.14em;color:var(--gold);font-weight:800}
+.row{display:grid;grid-template-columns:40px 1fr auto;align-items:center;gap:10px;height:46px;position:relative;font-size:25px;font-weight:700}
+.row .rk{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-size:20px;background:rgba(255,255,255,.1)}
+.row:nth-child(2) .rk{background:var(--gold);color:#3a2300}.row:nth-child(3) .rk{background:#d9e2e6;color:#223}.row:nth-child(4) .rk{background:#d08a4a;color:#2a1300}
+.row .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .sc{font-variant-numeric:tabular-nums;color:var(--gold)}
+.row .bar{position:absolute;left:50px;right:0;bottom:3px;height:4px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden}
+.row .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold-2),var(--red));transition:width .6s}
+.row.flash{animation:flash 1.2s}
+@keyframes flash{0%,40%{background:rgba(255,207,74,.28)}100%{background:transparent}}
+
+/* tier legend */
+.tiers{position:absolute;right:36px;top:226px;width:470px;z-index:5;background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:18px 20px}
+.tiers h3{margin:0 0 10px;font-size:22px;letter-spacing:.12em;color:var(--gold);font-weight:800}
+.tiers div{display:flex;justify-content:space-between;align-items:baseline;font-size:24px;font-weight:700;padding:4px 0;border-top:1px solid var(--line)}
+.tiers div:first-of-type{border-top:0}
+.tiers b{color:var(--gold)} .tiers small{font-size:19px;color:var(--ink-2);font-weight:500;margin-left:10px}
+
+/* map labels */
+.pl{transform-origin:50% 50%;font-size:19px;font-weight:700;color:#fff;text-shadow:0 0 4px #000,0 0 3px #000,0 0 2px #000;white-space:nowrap;display:flex;gap:6px;align-items:center;transition:transform .3s}
+.pl .s{background:var(--gold);color:#3a2300;border-radius:999px;padding:1px 9px;font-size:16px;font-weight:800;text-shadow:none;font-variant-numeric:tabular-nums}
+.pl.hot{opacity:0}
+.far .small .n{display:none}
+.plc{font-size:20px;font-style:italic;font-weight:700;color:#ffd6cf;text-shadow:0 0 4px #000,0 0 3px #000;white-space:nowrap;text-align:center}
+.plc small{display:block;font-size:14px;font-style:normal;color:var(--ink-2)}
+.seaL{font-size:26px;font-weight:800;letter-spacing:.4em;color:rgba(180,215,230,.35);white-space:nowrap}
+
+/* marker over province */
+.mk{display:flex;flex-direction:column;align-items:center;position:relative;transform-origin:50% 100%;animation:pop .45s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
+.mk.burst{width:10px;height:10px}.mk.burst .pts{top:-620px;left:-200px;width:400px;text-align:center}
+.mk .av{width:120px;height:120px;border-radius:50%;border:6px solid #fff;object-fit:cover;background:#335;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.mk .nm{margin-top:8px;background:#fff;color:#0b1a22;font-weight:800;font-size:26px;border-radius:14px;padding:4px 16px;max-width:520px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mk .cm{margin-top:8px;background:rgba(6,22,32,.9);border:2px solid var(--gold);color:#fff;font-weight:600;font-size:26px;border-radius:16px;padding:8px 18px;max-width:560px;text-align:center;line-height:1.3}
+.mk .pin{width:4px;height:60px;background:linear-gradient(#fff,rgba(255,255,255,0))}
+.mk.gift .av{width:200px;height:200px;border-color:var(--gold)}
+.mk.gift .nm{background:var(--gold);font-size:32px}
+.mk .pts{position:absolute;top:-70px;font-size:64px;font-weight:900;color:var(--gold);text-shadow:0 4px 0 #a5320f,0 0 20px rgba(0,0,0,.6);animation:rise 2.4s ease-out forwards}
+@keyframes rise{0%{transform:translateY(30px) scale(.6);opacity:0}15%{transform:translateY(0) scale(1.15);opacity:1}100%{transform:translateY(-110px) scale(1);opacity:0}}
+.mk.glow .av{border-color:#fff7c2;box-shadow:0 0 30px 10px #ffe680,0 0 80px 30px rgba(255,190,40,.7);animation:pulse 1s ease-in-out infinite alternate}
+.mk.glow .cm{box-shadow:0 0 24px 6px rgba(255,214,90,.85);border-color:#fff3b0}
+.mk.glow .rays{position:absolute;top:-130px;width:460px;height:460px;border-radius:50%;
+  background:repeating-conic-gradient(rgba(255,230,120,.55) 0 8deg,transparent 8deg 22deg);
+  -webkit-mask:radial-gradient(circle,#000 18%,transparent 68%);mask:radial-gradient(circle,#000 18%,transparent 68%);animation:spin 6s linear infinite;z-index:-1}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{to{box-shadow:0 0 50px 18px #fff1a6,0 0 120px 50px rgba(255,190,40,.8)}}
+
+/* hanging avatars */
+.hang{display:flex;flex-direction:column;align-items:center;animation:pop .6s cubic-bezier(.2,1.6,.4,1);transform-origin:50% 100%}
+.hang .ring .rays{position:absolute;left:50%;top:50%;width:520px;height:520px;margin:-260px 0 0 -260px;z-index:-1;border-radius:50%;background:repeating-conic-gradient(rgba(255,230,120,.5) 0 8deg,transparent 8deg 22deg);-webkit-mask:radial-gradient(circle,#000 22%,transparent 68%);mask:radial-gradient(circle,#000 22%,transparent 68%);animation:spin 8s linear infinite}
+.hang.md .ring .rays{width:360px;height:360px;margin:-180px 0 0 -180px}
+.hang .ring{position:relative;--p:100;border-radius:50%;padding:8px;background:conic-gradient(var(--gold) calc(var(--p)*1%),rgba(255,255,255,.2) 0)}
+.hang img{display:block;border-radius:50%;object-fit:cover;border:4px solid #fff;background:#335}
+.hang.md img{width:150px;height:150px}.hang.lg img{width:250px;height:250px}
+.hang .nm{margin-top:6px;background:var(--red);color:#fff;font-weight:800;font-size:24px;border-radius:12px;padding:3px 14px;max-width:360px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hang.lg .nm{font-size:32px;background:linear-gradient(90deg,var(--red),#ff7b1c)}
+.hang .str{width:3px;height:70px;background:linear-gradient(rgba(255,255,255,.9),rgba(255,255,255,.1))}
+.hang.lg .str{height:110px}
+.hang .crown{font-size:56px;line-height:1;margin-bottom:-12px;filter:drop-shadow(0 3px 4px rgba(0,0,0,.5))}
+
+/* bottom card */
+.card{position:absolute;left:36px;right:36px;bottom:250px;z-index:6;display:none;align-items:center;gap:26px;padding:24px 30px;border-radius:28px;
+  background:linear-gradient(100deg,rgba(6,22,32,.95),rgba(14,40,56,.92));border:2px solid var(--line);box-shadow:0 20px 50px rgba(0,0,0,.5)}
+.card.on{display:flex;animation:slide .4s ease-out}
+@keyframes slide{from{transform:translateY(40px);opacity:0}}
+.card img{width:130px;height:130px;border-radius:50%;object-fit:cover;border:5px solid #fff;flex:none;background:#335}
+.card .t{min-width:0;flex:1}
+.card .n{font-size:38px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .c{font-size:30px;color:var(--ink-2);margin-top:4px;line-height:1.3;max-height:80px;overflow:hidden}
+.card .r{margin-top:10px;font-size:32px;font-weight:800;color:var(--gold)}
+.card.gift{border-color:var(--gold)} .card.glow{box-shadow:0 0 40px 8px rgba(255,214,90,.6);border-color:#fff3b0}
+.card .gimg{width:96px;height:96px;object-fit:contain;flex:none}
+
+/* chat ticker */
+.ticker{position:absolute;left:36px;right:36px;bottom:40px;height:190px;z-index:5;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;overflow:hidden;
+  -webkit-mask:linear-gradient(transparent,#000 35%);mask:linear-gradient(transparent,#000 35%)}
+.ticker div{display:flex;align-items:center;gap:12px;font-size:26px;animation:slide .3s}
+.ticker img{width:40px;height:40px;border-radius:50%;object-fit:cover;flex:none;background:#335}
+.ticker b{color:#9fd9ff;white-space:nowrap;max-width:300px;overflow:hidden;text-overflow:ellipsis}
+.ticker span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.ticker i{font-style:normal;background:var(--gold);color:#3a2300;border-radius:8px;padding:0 10px;font-weight:800;font-size:21px;white-space:nowrap}
+.foot{position:absolute;left:0;right:0;bottom:0;height:470px;z-index:4;pointer-events:none;background:linear-gradient(0deg,rgba(4,14,20,.92) 0%,rgba(4,14,20,.6) 55%,rgba(4,14,20,0) 100%)}
+#warn{position:absolute;inset:0;display:grid;place-items:center;font-size:40px;z-index:20}
+</style>
+</head>
+<body>
+<div id="root">
+  <canvas id="gl"></canvas>
+  <div id="lbl"></div>
+  <div class="hdr">
+    <h1 id="title"><span class="star">★</span>BẢN ĐỒ VIỆT NAM</h1>
+    <div class="sub"><span class="chip">34 TỈNH THÀNH</span><span id="subtitle">Comment tên tỉnh của bạn để ghi điểm!</span></div>
+  </div>
+  <div class="board"><h3>BẢNG XẾP HẠNG</h3><div id="rows"></div></div>
+  <div class="tiers" id="tiers"></div>
+  <div class="foot"></div>
+  <div class="card" id="card"><img id="cAv" alt=""><div class="t"><div class="n" id="cN"></div><div class="c" id="cC"></div><div class="r" id="cR"></div></div><img class="gimg" id="cG" alt="" hidden></div>
+  <div class="ticker" id="ticker"></div>
+  <canvas id="fx" width="1080" height="1920"></canvas>
+  <div id="warn">Đang dựng bản đồ…</div>
+</div>
+<script type="importmap">{"imports":{"three":"./vendor/three/three.module.js","three/addons/":"./vendor/three/addons/"}}</script>
+<script type="module" src="stage.js"></script>
+</body>
+</html>
