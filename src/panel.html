@@ -215,6 +215,22 @@ td input,td select{padding:4px 6px}
   </section>
 
   <section>
+    <h2>Kể chuyện khi rảnh <span class="pill" id="storyCount">—</span></h2>
+    <div class="r">
+      <label class="ck"><input type="checkbox" id="storyEnabled"> Tự kể chuyện khi live vắng</label>
+      <label class="f" style="max-width:220px">Rảnh bao lâu thì kể (giây)<input type="number" id="storyIdleSec" min="10" step="5"></label>
+    </div>
+    <div class="r" id="storyTypes">
+      <label class="ck"><input type="checkbox" data-t="dangian"> Dân gian</label>
+      <label class="ck"><input type="checkbox" data-t="ma"> Truyện ma</label>
+      <label class="ck"><input type="checkbox" data-t="cuoi"> Truyện cười</label>
+      <label class="ck"><input type="checkbox" data-t="ngungon"> Ngụ ngôn</label>
+    </div>
+    <p class="note">Ưu tiên kể chuyện của tỉnh vừa có người comment hoặc đang dẫn đầu. Có comment hay quà là dừng kể sau câu đang đọc.</p>
+    <div class="r"><button class="pri" id="storyNow">Kể ngay 1 chuyện</button><button id="openStory">Mở file truyện</button><button id="reloadStory">Nạp lại</button><button id="restoreStory">Khôi phục mặc định</button></div>
+  </section>
+
+  <section>
     <h2>Lời chào & cảm ơn</h2>
     <p class="note">Mỗi tỉnh có 5 lời chào, 3 câu cảm ơn ngắn, 2 câu chúc mừng (chỉ đọc khi treo avatar/pháo hoa). Sửa trong file greetings.json.</p>
     <div class="r"><button id="openGreet">Mở file lời chào</button><button class="pri" id="reloadGreet">Nạp lại lời chào</button><button id="restoreGreet">Khôi phục mặc định</button></div>

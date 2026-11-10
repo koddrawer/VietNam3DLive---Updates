@@ -160,12 +160,18 @@ let queue = [], cur = null, curTimer = null, homeTimer = null, marker = null;
 const hangs = [];
 function card(ev) {
   const c = $('card'); c.className = 'card on' + (ev.kind !== 'comment' ? ' gift' : '') + (ev.tier?.effect === 'glow' || ev.tier?.fireworks ? ' glow' : '');
-  $('cAv').src = ev.user.avatar || ''; $('cAv').referrerPolicy = 'no-referrer';
-  $('cN').textContent = ev.user.name;
+  $('cAv').src = ev.user?.avatar || STORY_ICON; $('cAv').referrerPolicy = 'no-referrer';
+  $('cN').textContent = ev.user?.name || '';
   if (ev.kind === 'comment') { $('cC').textContent = ev.text; $('cR').textContent = ev.points ? `+${ev.points} điểm cho ${ev.province} · tổng ${ev.total.toLocaleString('vi-VN')}` : `${ev.province} · ${ev.total.toLocaleString('vi-VN')} điểm`; }
   else if (ev.kind === 'gift') { $('cC').textContent = `Tặng ${ev.giftName || 'quà'} · ${ev.coins} xu` + (ev.text ? ` — “${ev.text}”` : ''); $('cR').textContent = `+${ev.points.toLocaleString('vi-VN')} điểm cho ${ev.province}!`; }
   else { $('cC').textContent = `Tặng ${ev.giftName || 'quà'} · ${ev.coins} xu`; $('cR').textContent = `Comment tên tỉnh để nhận +${ev.points} điểm!`; }
   $('cG').hidden = !ev.giftImg; if (ev.giftImg) $('cG').src = ev.giftImg;
+  if (ev.kind === 'story') {
+    const T = { dangian: 'TRUYỆN DÂN GIAN', ma: 'TRUYỆN MA', cuoi: 'TRUYỆN CƯỜI', ngungon: 'TRUYỆN NGỤ NGÔN' };
+    c.className = 'card on story ' + ev.type;
+    $('cN').innerHTML = `<span class="chip">${T[ev.type] || 'TRUYỆN'}</span>${esc(ev.title)}`;
+    $('cC').textContent = ev.lines?.[0] || ''; $('cR').textContent = ev.province ? `Chuyện đất ${ev.province}` : 'Chuyện xưa Việt Nam';
+  }
 }
 function clearMarker() { if (marker) { scene.remove(marker); marker.element.remove(); marker = null; } }
 function highlight(name, on) { const P = prov[name]; if (!P) return; P.hl = on ? performance.now() : 0; P.label.inner.classList.toggle('hot', on); if (!on) P.mesh.material.emissiveIntensity = 0; }
@@ -189,11 +195,14 @@ function addHang(ev) {
 
 on('show', ev => {
   if (!prov[ev.province] && ev.kind !== 'gift-ask') return;
-  if (ev.ttsId != null) linked.add(ev.ttsId);
+  ev.voice = ev.voice || (ev.ttsId != null ? [ev.ttsId] : []);
+  for (const id of ev.voice) linked.add(id);
+  if (ev.kind === 'story') storyAsked = false;
   if (ev.kind === 'comment') { // tránh dồn ứ: giữ tối đa 6 comment chờ
     const cm = queue.filter(q => q.kind === 'comment'); if (cm.length >= 6) dropShow(cm[0]);
   }
   queue.push(ev); queue.sort((a, b) => b.prio - a.prio || a.id - b.id);
+  if (cur?.kind === 'story' && ev.prio > cur.prio && !cur.abort) abortStory(); // có người tương tác → dừng kể sau câu đang đọc
   // quà được xếp lên đầu hàng chờ, nhưng vẫn để người đang được chào nghe hết câu
   next();
 });
@@ -203,10 +212,12 @@ function next() {
   if (!ev) { $('card').className = 'card'; clearTimeout(homeTimer); homeTimer = setTimeout(() => goHome(), (cfg.idleHomeSec || 6) * 1000); return; }
   clearTimeout(homeTimer); cur = ev; atHome = false; play(ev);
 }
-function dropShow(ev) { const i = queue.indexOf(ev); if (i >= 0) queue.splice(i, 1); if (ev.ttsId != null && !ttsFinished.has(ev.ttsId)) cancelTts(ev.ttsId); }
+function dropShow(ev) { const i = queue.indexOf(ev); if (i >= 0) queue.splice(i, 1); for (const id of ev.voice || []) if (!ttsFinished.has(id)) cancelTts(id); }
+function abortStory() { cur.abort = true; for (const id of cur.voice) if (!ttsFinished.has(id) && playing?.id !== id) cancelTts(id); }
 function finish(early) {
   clearTimeout(curTimer); if (!cur) return;
-  if (early && cur.ttsId != null && !ttsFinished.has(cur.ttsId)) { if (playing?.id === cur.ttsId) playing.stop(); cancelTts(cur.ttsId); }
+  if (early) for (const id of cur.voice || []) if (!ttsFinished.has(id)) { if (playing?.id === id) playing.stop(); cancelTts(id); }
+  if (cur.kind === 'story') { $('card').classList.remove('story'); lastBusy = performance.now(); }
   if (cur.province) highlight(cur.province, false);
   L('END ' + cur.id); clearMarker(); cur = null; next();
 }
@@ -217,13 +228,18 @@ function play(ev) {
   card(ev);
   let dur;
   if (ev.kind === 'gift-ask') { dur = 4000; sfx(ev.sfx || '../assets/sfx/coin.wav'); }
+  else if (ev.kind === 'story') {
+    dur = 1500;
+    const P = prov[ev.province];
+    if (P) { highlight(ev.province, true); P.label.inner.classList.remove('hot'); const v = viewOf(P.anchor, Math.max(P.dist * 2.6, 70)); flyTo(v.t, v.p, 2200); } else goHome(2000);
+  }
   else {
     const P = prov[ev.province]; highlight(ev.province, true);
     if (ev.kind === 'comment') {
       const v = viewOf(P.anchor, P.dist); flyTo(v.t, v.p, 1300);
       marker = makeMarker(ev, '');
       dur = Math.max(2000, ((cfg.commentHoldSec || 4) - queue.length * 0.35) * 1000) + 900;
-      if (ev.ttsId != null) dur = Math.min(dur, 2600); // có giọng chào thì chờ đọc xong là chính
+      if (ev.voice.length) dur = Math.min(dur, 2600); // có giọng chào thì chờ đọc xong là chính
     } else {
       const t = ev.tier || {}; const close = t.fireworks ? 19 : t.effect === 'hang' ? 17 : 13;
       const focus = P.anchor.clone().add(new THREE.Vector3(0, 1.2, 0));
@@ -241,12 +257,14 @@ function play(ev) {
 // Giọng của cảnh chỉ phát khi cảnh đó đang lên sóng; cảnh chỉ kết thúc khi đọc xong (+0,4s)
 function checkFinish(now) {
   if (!cur) return;
-  const id = cur.ttsId;
-  if (id != null && !ttsFinished.has(id)) {
-    if (!store.has(id) && playing?.id !== id && now - cur.start > 15000) cancelTts(id); // giọng tạo quá lâu → bỏ
+  const id = (cur.voice || []).find(x => !ttsFinished.has(x));
+  if (id != null) {
+    if (!cur.waitFrom || cur.waitId !== id) { cur.waitFrom = now; cur.waitId = id; }
+    if (!store.has(id) && playing?.id !== id && now - cur.waitFrom > 15000) cancelTts(id); // giọng tạo quá lâu → bỏ
     else { pumpVoice(); return; }
   }
-  const vEnd = id != null ? (voiceEndAt.get(id) || 0) + 400 : 0;
+  const last = (cur.voice || []).at(-1);
+  const vEnd = last != null ? (voiceEndAt.get(last) || 0) + 400 : 0;
   if (now >= cur.minEnd && now >= vEnd) finish();
 }
 on('home', () => { for (const q of [...queue]) dropShow(q); finish(true); goHome(1500); });
@@ -285,13 +303,14 @@ on('tts-drop', x => {
   const id = typeof x === 'object' ? x.id : x;
   ttsFinished.add(id); voiceEndAt.set(id, 0); store.delete(id);
   // lời chào bị bỏ vì quá đông → bỏ luôn cảnh zoom của người đó cho khớp
-  if (x?.reason === 'overflow') { const ev = queue.find(q => q.ttsId === id); if (ev) dropShow(ev); }
+  if (x?.reason === 'overflow') { const ev = queue.find(q => q.voice?.includes(id)); if (ev) dropShow(ev); }
 });
 on('tts-clear', () => { for (const id of store.keys()) ttsFinished.add(id); store.clear(); freeQ = []; try { playing?.stop?.(); } catch {} speechSynthesis.cancel(); });
 function cancelTts(id) { ttsFinished.add(id); voiceEndAt.set(id, voiceEndAt.get(id) || 0); store.delete(id); linked.delete(id); api.send('tts-cancel', id); }
 function pumpVoice() {
   if (playing) return;
-  if (cur && cur.ttsId != null && !ttsFinished.has(cur.ttsId)) { const d = store.get(cur.ttsId); if (d) { store.delete(cur.ttsId); playVoice(d); } return; }
+  const nid = cur ? (cur.voice || []).find(x => !ttsFinished.has(x)) : null;
+  if (nid != null) { const d = store.get(nid); if (d) { store.delete(nid); playVoice(d); } return; }
   // lời chào người mới: chỉ đọc khi màn hình đang rảnh, quá 10 giây thì bỏ
   const now = performance.now();
   freeQ = freeQ.filter(d => d.kind !== 'join' || now - d.got < 10000);
@@ -300,6 +319,7 @@ function pumpVoice() {
 }
 function ttsDone() { L('VOICE_END ' + playing?.id); if (playing?.id != null) { ttsFinished.add(playing.id); voiceEndAt.set(playing.id, performance.now()); } playing = null; pumpVoice(); }
 async function playVoice(d) {
+  if (d.kind === 'story' && cur?.kind === 'story') { $('cC').textContent = d.text; $('cC').classList.remove('fade'); void $('cC').offsetWidth; $('cC').classList.add('fade'); }
   L('VOICE ' + d.id + ' ' + d.text.slice(0, 30));
   playing = { id: d.id, stop() {} };
   if (actx.state === 'suspended') try { await actx.resume(); } catch {}
@@ -317,6 +337,16 @@ async function playVoice(d) {
     src.connect(g).connect(actx.destination); src.onended = ttsDone; src.start();
     playing.stop = () => { try { src.stop(); } catch {} };
   } catch (e) { console.error(e); ttsDone(); }
+}
+
+// ── kể chuyện khi rảnh ──
+const STORY_ICON = 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='#7a3d12'/><path d='M22 28h24c4 0 4 2 4 6v42c0-4-2-6-6-6H22z' fill='#ffe3a8'/><path d='M78 28H54c-4 0-4 2-4 6v42c0-4 2-6 6-6h22z' fill='#ffd27a'/></svg>`);
+let lastBusy = performance.now(), storyAsked = false, storyAskedAt = 0;
+function idleTick(now) {
+  if (cur || queue.length || playing || freeQ.length) { lastBusy = now; return; }
+  if (!cfg.storyEnabled) return;
+  if (storyAsked && now - storyAskedAt > 20000) storyAsked = false;
+  if (!storyAsked && now - lastBusy > (cfg.storyIdleSec || 45) * 1000) { storyAsked = true; storyAskedAt = now; api.send('story-idle'); }
 }
 
 // ── hiệu ứng âm thanh ──
@@ -400,7 +430,7 @@ renderer.setAnimationLoop(now => {
     h.o.inner.style.scale = THREE.MathUtils.clamp(26 / camera.position.distanceTo(h.o.position), 0.28, 1).toFixed(3); // xa thì nhỏ lại
     if (left <= 0) { scene.remove(h.o); h.o.element.remove(); hangs.splice(i, 1); }
   }
-  fxStep(now); checkFinish(now); bgmTick();
+  fxStep(now); checkFinish(now); bgmTick(); idleTick(now);
   renderer.render(scene, camera); lr.render(scene, camera);
 });
 api.send('stage-ready');

@@ -10,7 +10,7 @@ const CTX = globalThis.__vnlive;
 const { TikTokLiveConnection, WebcastEvent, ControlEvent } = CTX.tiktok;
 const ROOT = CTX.ROOT;            // thư mục gốc gói cài (asar)
 const res = rel => CTX.resolve(rel); // file thực tế: bản cập nhật nếu có, không thì bản gốc
-export const CORE_VERSION = '1.1.7';
+export const CORE_VERSION = '1.2.0';
 const UD = app.getPath('userData');
 const CFG_FILE = path.join(UD, 'config.json');
 const SCORE_FILE = path.join(UD, 'scores.json');
@@ -28,6 +28,7 @@ const DEFAULTS = {
   vieneuDir: '', vieneuGpu: false, autoStartVieneu: false,
   autoUpdate: true, updateRepo: 'koddrawer/VietNam3DLive---Updates', updateBranch: 'main',
   joinVoice: true, joinBanner: true, joinVoiceGapSec: 8,
+  storyEnabled: true, storyIdleSec: 45, storyTypes: { dangian: true, ma: true, cuoi: true, ngungon: true },
   bgmEnabled: false, bgmFiles: [], bgmPath: '', bgmVolume: 0.35, bgmDuck: 0.35, bgmShuffle: true,
   sfxEnabled: true, sfxVolume: 0.8, fwSfx: true,
   pointCooldownSec: 3, showCooldownSec: 15, commentHoldSec: 4, idleHomeSec: 6, maxGreetQueue: 5,
@@ -67,6 +68,12 @@ const DEF_GREET = res('assets/greetings.json');
   }
 }
 let greetings = readJSON(GREET_FILE, readJSON(DEF_GREET, {}));
+const STORY_FILE = path.join(UD, 'stories.json'), DEF_STORY = res('assets/stories.json');
+{
+  const def = readJSON(DEF_STORY, {}); const mine = readJSON(STORY_FILE, null);
+  if (!mine || (mine._version || 0) < (def._version || 0)) { if (mine) fs.copyFileSync(STORY_FILE, path.join(UD, `stories.backup-v${mine._version || 0}.json`)); fs.copyFileSync(DEF_STORY, STORY_FILE); }
+}
+let stories = readJSON(STORY_FILE, readJSON(DEF_STORY, { provinces: {}, chung: [] }));
 
 // ───────────────────────── windows ─────────────────────────
 let stageWin = null, panelWin = null;
@@ -180,7 +187,7 @@ function handleComment(user, text) {
   toStage('chat', { name: u.name, avatar: u.avatar, text, province: p?.name || null });
   toPanel('feed', { kind: 'chat', name: u.name, text, province: p?.name || null });
   if (!p) return;
-  users[u.uid] = { p: p.name, t: Date.now() }; saveUsers();
+  users[u.uid] = { p: p.name, t: Date.now() }; saveUsers(); noteProv(p.name);
   const now = Date.now();
 
   // quà đang chờ tỉnh → áp dụng ngay, ưu tiên
@@ -201,6 +208,39 @@ function handleComment(user, text) {
   const line = Math.random() < 0.75 && provVoice(p, 'greet').length ? pick(provVoice(p, 'greet')) : pick(greetings.generic?.greet);
   const ttsId = cfg.voiceComments ? tts.say(fill(line, vars), 0) : null;
   toStage('show', { id: evSeq++, kind: 'comment', prio: 0, user: u, text, province: p.name, provinceId: p.id, points: pts, total: scores[p.name], ttsId });
+}
+
+// ── kể chuyện khi rảnh ──
+const recentProv = []; const toldRecent = [];
+function noteProv(name) { const i = recentProv.indexOf(name); if (i >= 0) recentProv.splice(i, 1); recentProv.unshift(name); recentProv.length = Math.min(recentProv.length, 8); }
+function splitSentences(t) { return String(t).replace(/\s+/g, ' ').trim().split(/(?<=[.!?…])\s+/).filter(x => x.length > 1); }
+function tellStory(force) {
+  if (!cfg.storyEnabled && !force) return false;
+  const types = cfg.storyTypes || {};
+  const ok = st => st && st.text && types[st.type] !== false;
+  const key = (p, st) => (p || 'chung') + '|' + st.title;
+  const fresh = (p, list) => (list || []).filter(st => ok(st) && !toldRecent.includes(key(p, st)));
+  // ưu tiên tỉnh vừa có người comment, tỉnh đang dẫn đầu, rồi ngẫu nhiên
+  const top = standings().filter(r => r.score > 0).slice(0, 6).map(r => r.name);
+  const all = Object.keys(stories.provinces || {});
+  const order = [...recentProv, ...top, ...all.sort(() => Math.random() - 0.5)];
+  let prov = null, story = null;
+  const r = Math.random();
+  if (r < 0.75) {
+    for (const p of [...new Set(order)]) { const f = fresh(p, stories.provinces?.[p]); if (f.length) { prov = p; story = pick(f); break; } if (Math.random() < 0.35) continue; }
+  }
+  if (!story) { const f = fresh(null, stories.chung); if (f.length) story = pick(f); }
+  if (!story) { toldRecent.length = 0; return force ? tellStory(false) : false; }
+  toldRecent.push(key(prov, story)); if (toldRecent.length > 40) toldRecent.shift();
+  const P = prov ? byName[prov] : null;
+  const vars = { ten_truyen: story.title, tinh: P?.spoken || '' };
+  const intro = fill(pick(prov ? stories.intro : stories.intro_chung) || '', vars);
+  const outro = fill(pick(prov ? stories.outro : (stories.outro || []).filter(x => !x.includes('{tinh}'))) || '', vars);
+  const lines = [intro, ...splitSentences(story.text), outro].filter(Boolean);
+  const voice = cfg.ttsEnabled ? lines.map(l => tts.say(l, -5, 'story')).filter(x => x != null) : [];
+  toStage('show', { id: evSeq++, kind: 'story', prio: -5, province: prov, provinceId: P?.id, title: story.title, type: story.type, lines, voice });
+  log(`📖 Kể chuyện: ${story.title}${prov ? ' (' + prov + ')' : ''}`);
+  return true;
 }
 
 // ── người mới vào live ──
@@ -447,6 +487,15 @@ ipcMain.handle('tts', async (e, a) => {
 });
 ipcMain.on('tts-done', () => tts.done());
 ipcMain.on('tts-cancel', (e, id) => tts.cancel(id));
+ipcMain.on('story-idle', () => tellStory(false));
+ipcMain.handle('stories', (e, a) => {
+  if (a === 'now') return tellStory(true);
+  if (a === 'open') return shell.openPath(STORY_FILE);
+  if (a === 'reload') { const st = readJSON(STORY_FILE, null); if (st) { stories = st; log('Đã nạp lại kho truyện'); } else log('⚠️ stories.json bị lỗi định dạng, giữ bản cũ'); }
+  if (a === 'restore') { fs.copyFileSync(DEF_STORY, STORY_FILE); stories = readJSON(STORY_FILE, stories); log('Đã khôi phục kho truyện mặc định'); }
+  const n = Object.values(stories.provinces || {}).reduce((s, l) => s + l.length, 0) + (stories.chung || []).length;
+  return { count: n };
+});
 ipcMain.handle('update', (e, a) => { const U = CTX.updater; if (a === 'check') return U.check().then(() => U.info()); if (a === 'restart') return U.restart(); return U.info(); });
 CTX.updater.listeners.add(st => toPanel('update-status', CTX.updater.info()));
 ipcMain.handle('pick-file', async (e, kind) => {
@@ -478,6 +527,17 @@ export function start() {
 }
 async function selfTest(dir) {
   const shot = async (w, n) => { try { const img = await w.webContents.capturePage(); fs.writeFileSync(path.join(dir, n + '.png'), img.toPNG()); } catch (e) { console.log('shot fail', e.message); } };
+  if (process.env.VNLIVE_STORYTEST) {
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    cfg.storyIdleSec = 5; toStage('config', stageCfg());
+    handleComment(fakeUser('An'), 'Thanh Hóa nè');
+    await wait(22000); await shot(stageWin, 's1');
+    await wait(5000); await shot(stageWin, 's2');
+    handleComment(fakeUser('Bình'), 'Huế ơi');
+    await wait(9000);
+    console.log('STORY\n' + (await stageWin.webContents.executeJavaScript('window.__log.join("\\n")')) + '\n' + logs.slice(-4).join(' | '));
+    return app.quit();
+  }
   if (process.env.VNLIVE_JOINTEST) {
     const wait = ms => new Promise(r => setTimeout(r, ms));
     await wait(8000);

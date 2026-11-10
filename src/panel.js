@@ -10,17 +10,18 @@ cfg = init.cfg;
 
 // ── fields bound to config ──
 const TEXT = ['username', 'apiKey', 'title', 'subtitle', 'ttsUrl', 'vieneuDir', 'updateRepo', 'tierTitle'];
-const CHECK = ['autoReconnect', 'alwaysOnTop', 'ttsEnabled', 'voiceComments', 'fallbackVoice', 'vieneuGpu', 'autoStartVieneu', 'bgmEnabled', 'bgmShuffle', 'sfxEnabled', 'fwSfx', 'autoUpdate', 'showTierBoard', 'joinVoice', 'joinBanner'];
-const NUM = ['pointCooldownSec', 'showCooldownSec', 'commentHoldSec', 'idleHomeSec', 'joinVoiceGapSec'];
+const CHECK = ['autoReconnect', 'alwaysOnTop', 'ttsEnabled', 'voiceComments', 'fallbackVoice', 'vieneuGpu', 'autoStartVieneu', 'bgmEnabled', 'bgmShuffle', 'sfxEnabled', 'fwSfx', 'autoUpdate', 'showTierBoard', 'joinVoice', 'joinBanner', 'storyEnabled'];
+const NUM = ['pointCooldownSec', 'showCooldownSec', 'commentHoldSec', 'idleHomeSec', 'joinVoiceGapSec', 'storyIdleSec'];
 const set = patch => api.invoke('set-config', patch).then(c => { cfg = c; });
 function fill() {
   for (const k of TEXT) $(k).value = cfg[k] ?? '';
-  for (const k of CHECK) $(k).checked = ['showTierBoard', 'joinVoice', 'joinBanner'].includes(k) ? cfg[k] !== false : !!cfg[k];
+  for (const k of CHECK) $(k).checked = ['showTierBoard', 'joinVoice', 'joinBanner', 'storyEnabled'].includes(k) ? cfg[k] !== false : !!cfg[k];
   for (const k of NUM) $(k).value = cfg[k];
   $('resolution').value = cfg.resolution; $('windowScale').value = cfg.windowScale; $('wsv').textContent = cfg.windowScale + '%';
   $('ttsVolume').value = cfg.ttsVolume; $('volv').textContent = Math.round(cfg.ttsVolume * 100) + '%';
   for (const k of SLIDE) { $(k).value = cfg[k]; $(k + 'v').textContent = Math.round(cfg[k] * 100) + '%'; }
   setVoices(null); renderTiers(); renderBgm();
+  for (const el of document.querySelectorAll('#storyTypes input')) el.checked = (cfg.storyTypes || {})[el.dataset.t] !== false;
 }
 for (const k of TEXT) $(k).addEventListener('change', e => set({ [k]: e.target.value.trim() }));
 for (const k of CHECK) $(k).addEventListener('change', e => set({ [k]: e.target.checked }));
@@ -166,6 +167,15 @@ $('simGifts').onclick = e => { const b = e.target.closest('button'); if (b) api.
 $('simNoProv').onclick = () => api.invoke('simulate', { type: 'gift', coins: 10, noProvince: true });
 
 // ── greetings ──
+document.getElementById('storyTypes').addEventListener('change', () => {
+  const t = {}; for (const el of document.querySelectorAll('#storyTypes input')) t[el.dataset.t] = el.checked; set({ storyTypes: t });
+});
+const showStoryCount = r => { if (r?.count != null) $('storyCount').textContent = r.count + ' truyện'; };
+$('storyNow').onclick = () => api.invoke('stories', 'now');
+$('openStory').onclick = () => api.invoke('stories', 'open');
+$('reloadStory').onclick = () => api.invoke('stories', 'reload').then(showStoryCount);
+$('restoreStory').onclick = () => api.invoke('stories', 'restore').then(showStoryCount);
+api.invoke('stories', 'count').then(showStoryCount);
 $('openGreet').onclick = () => api.invoke('greetings', 'open');
 $('reloadGreet').onclick = () => api.invoke('greetings', 'reload');
 $('restoreGreet').onclick = () => api.invoke('greetings', 'restore');
