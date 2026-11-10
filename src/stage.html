@@ -44,6 +44,19 @@ html,body{margin:0;height:100%;background:#050e14;overflow:hidden;font-family:va
 @keyframes flash{0%,40%{background:rgba(255,207,74,.28)}100%{background:transparent}}
 
 /* tier legend */
+.players{position:absolute;right:36px;top:500px;width:470px;z-index:5;background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:18px 20px}
+.players h3{margin:0 0 8px;font-size:22px;letter-spacing:.12em;color:var(--gold);font-weight:800}
+.pr{display:grid;grid-template-columns:34px 48px minmax(0,1fr) auto;align-items:center;gap:10px;height:58px;border-top:1px solid var(--line)}
+.pr:first-of-type{border-top:0}
+.pr .rk{font-size:22px;font-weight:900;text-align:center;color:var(--ink-2)}
+.pr:nth-of-type(1) .rk{color:var(--gold)}.pr:nth-of-type(2) .rk{color:#d9e2e6}.pr:nth-of-type(3) .rk{color:#d08a4a}
+.pr .av{width:46px;height:46px;border-radius:50%;object-fit:cover;background:#335;border:2px solid rgba(255,255,255,.6);display:grid;place-items:center;font-weight:800;font-size:22px;color:#fff;overflow:hidden}
+.pr:nth-of-type(1) .av{border-color:var(--gold);box-shadow:0 0 12px rgba(255,207,74,.6)}
+.pr .who{min-width:0;display:flex;flex-direction:column;line-height:1.15}
+.pr .who b{font-size:24px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pr .who small{font-size:18px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pr .sc{font-size:25px;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums}
+.pr.flash{animation:flash 1.2s}
 .tiers{position:absolute;right:36px;top:226px;width:470px;z-index:5;background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:18px 20px}
 .tiers h3{margin:0 0 10px;font-size:22px;letter-spacing:.12em;color:var(--gold);font-weight:800}
 .tiers div{display:flex;justify-content:space-between;align-items:baseline;font-size:24px;font-weight:700;padding:4px 0;border-top:1px solid var(--line)}
@@ -153,6 +166,7 @@ html,body{margin:0;height:100%;background:#050e14;overflow:hidden;font-family:va
   </div>
   <div class="board"><h3>BẢNG XẾP HẠNG</h3><div id="rows"></div></div>
   <div class="tiers" id="tiers"></div>
+  <div class="players" id="players" hidden></div>
   <div class="foot"></div>
   <div class="card" id="card"><img id="cAv" alt=""><div class="t"><div class="n" id="cN"></div><div class="c" id="cC"></div><div class="r" id="cR"></div></div><img class="gimg" id="cG" alt="" hidden></div>
   <div class="welcome" id="welcome"></div>

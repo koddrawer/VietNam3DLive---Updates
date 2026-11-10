@@ -10,7 +10,7 @@ const CTX = globalThis.__vnlive;
 const { TikTokLiveConnection, WebcastEvent, ControlEvent } = CTX.tiktok;
 const ROOT = CTX.ROOT;            // thư mục gốc gói cài (asar)
 const res = rel => CTX.resolve(rel); // file thực tế: bản cập nhật nếu có, không thì bản gốc
-export const CORE_VERSION = '1.2.3';
+export const CORE_VERSION = '1.2.4';
 const UD = app.getPath('userData');
 const CFG_FILE = path.join(UD, 'config.json');
 const SCORE_FILE = path.join(UD, 'scores.json');
@@ -28,7 +28,7 @@ const DEFAULTS = {
   vieneuDir: '', vieneuGpu: false, autoStartVieneu: false,
   autoUpdate: true, updateRepo: 'koddrawer/VietNam3DLive---Updates', updateBranch: 'main',
   joinVoice: true, joinBanner: true, joinVoiceGapSec: 8,
-  labelScale: 1,
+  labelScale: 1, showPlayerBoard: true, playerBoardTitle: 'TOP NGƯỜI CHƠI', playerBoardCount: 5,
   storyEnabled: true, storyIdleSec: 45, storyTypes: { dangian: true, ma: true, cuoi: true, ngungon: true },
   bgmEnabled: false, bgmFiles: [], bgmPath: '', bgmVolume: 0.35, bgmDuck: 0.35, bgmShuffle: true,
   sfxEnabled: true, sfxVolume: 0.8, fwSfx: true,
@@ -150,6 +150,26 @@ function tierFor(coins) {
 function standings() {
   return PROVINCES.map(p => ({ name: p.name, id: p.id, score: scores[p.name] || 0 })).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, 'vi'));
 }
+// ── top người chơi ──
+const PLAYERS_FILE = path.join(UD, 'players.json');
+let players = readJSON(PLAYERS_FILE, {}); // uid -> { name, avatar, prov, pts }
+let playersT = null; const playerChanged = new Set();
+function addPlayer(u, prov, pts) {
+  if (!pts) return;
+  const x = players[u.uid] ||= { name: u.name, avatar: u.avatar, prov, pts: 0 };
+  x.name = u.name; if (u.avatar) x.avatar = u.avatar; x.prov = prov; x.pts += pts;
+  playerChanged.add(u.uid); pushPlayers();
+}
+function topPlayers(n = 10) { return Object.entries(players).map(([uid, x]) => ({ uid, ...x })).sort((a, b) => b.pts - a.pts).slice(0, n); }
+function pushPlayers() {
+  if (playersT) return;
+  playersT = setTimeout(() => {
+    playersT = null; const top = topPlayers(10);
+    toStage('players', { list: top, changed: [...playerChanged] }); toPanel('players', top); playerChanged.clear();
+    writeJSON(PLAYERS_FILE, players);
+  }, 300);
+}
+
 let scoreT = null; const scoreChanged = new Set();
 function pushScores(changed) { // gom cập nhật bảng điểm tối đa 4 lần/giây
   for (const c of changed || []) scoreChanged.add(c);
@@ -207,7 +227,7 @@ function handleComment(user, text) {
 
   let pts = 0;
   if (now - (lastPoint.get(u.uid) || 0) >= cfg.pointCooldownSec * 1000) {
-    lastPoint.set(u.uid, now); pts = 1; scores[p.name] += 1; pushScores([p.name]);
+    lastPoint.set(u.uid, now); pts = 1; scores[p.name] += 1; pushScores([p.name]); addPlayer(u, p.name, 1);
   }
   if (now - (lastShow.get(u.uid) || 0) < cfg.showCooldownSec * 1000) return;
   lastShow.set(u.uid, now);
@@ -322,7 +342,7 @@ function handleGift(user, coins, giftName, giftImg) {
 }
 
 function applyGift(u, p, g, text, late) {
-  scores[p.name] += g.points; pushScores([p.name]);
+  scores[p.name] += g.points; pushScores([p.name]); addPlayer(u, p.name, g.points);
   users[u.uid] = { p: p.name, t: Date.now() }; saveUsers();
   const t = g.tier; const key = t.fireworks ? 'mega' : (t.effect || 'zoom');
   const vars = { ten: ttsName(u.name), tinh: p.spoken, xu: g.coins, diem: g.points, tong: scores[p.name] };
@@ -493,7 +513,7 @@ function fakeUser(name) {
 }
 
 // ───────────────────────── IPC ─────────────────────────
-ipcMain.handle('init', () => ({ cfg, update: CTX.updater.info(), scores: standings(), logs, greetings, provinces: PROVINCES.map(p => ({ id: p.id, name: p.name })), version: app.getVersion() }));
+ipcMain.handle('init', () => ({ players: topPlayers(10), cfg, update: CTX.updater.info(), scores: standings(), logs, greetings, provinces: PROVINCES.map(p => ({ id: p.id, name: p.name })), version: app.getVersion() }));
 ipcMain.handle('set-config', (e, patch) => {
   const prevRes = cfg.resolution + '|' + cfg.windowScale;
   cfg = { ...cfg, ...patch }; saveCfg();
@@ -505,7 +525,8 @@ ipcMain.handle('set-config', (e, patch) => {
 ipcMain.handle('tiktok', (e, a) => (a === 'connect' ? connectTikTok() : disconnectTikTok()));
 ipcMain.handle('stage', (e, a) => { if (a === 'open') createStage(); else if (a === 'close') stageWin?.close(); else if (a === 'home') toStage('home'); else if (a === 'reload') stageWin?.reload(); });
 ipcMain.handle('scores', (e, a) => {
-  if (a.action === 'reset') { for (const k in scores) scores[k] = 0; pushScores([]); log('Đã đặt lại toàn bộ điểm'); }
+  if (a.action === 'reset') { for (const k in scores) scores[k] = 0; players = {}; pushScores([]); pushPlayers(); log('Đã đặt lại toàn bộ điểm và top người chơi'); }
+  if (a.action === 'reset-players') { players = {}; pushPlayers(); log('Đã đặt lại top người chơi'); }
   if (a.action === 'add' && byName[a.name]) { scores[a.name] = Math.max(0, (scores[a.name] || 0) + a.delta); pushScores([a.name]); }
   if (a.action === 'clear-users') { users = {}; saveUsers(); log('Đã xóa liên kết người xem ↔ tỉnh'); }
   return standings();
@@ -566,7 +587,7 @@ ipcMain.handle('greetings', async (e, a) => {
 });
 ipcMain.handle('pick-dir', async () => { const r = await dialog.showOpenDialog(panelWin, { properties: ['openDirectory'] }); return r.canceled ? null : r.filePaths[0]; });
 ipcMain.handle('open-data', () => shell.openPath(UD));
-ipcMain.on('stage-ready', () => { pendingGreet.clear(); toStage('config', stageCfg()); pushScores([]); greetBuf.flush(); });
+ipcMain.on('stage-ready', () => { pendingGreet.clear(); toStage('config', stageCfg()); pushScores([]); pushPlayers(); greetBuf.flush(); });
 
 // ───────────────────────── boot ─────────────────────────
 export function start() {
@@ -671,5 +692,5 @@ async function selfTest(dir) {
   console.log('SELFTEST scores', JSON.stringify(standings().slice(0, 3)), 'logs', logs.slice(-5).join(' | '));
   app.quit();
 }
-app.on('before-quit', () => { stopVieneu(); try { conn?.disconnect(); } catch {} writeJSON(SCORE_FILE, scores); });
+app.on('before-quit', () => { writeJSON(PLAYERS_FILE, players); stopVieneu(); try { conn?.disconnect(); } catch {} writeJSON(SCORE_FILE, scores); });
 app.on('window-all-closed', () => app.quit());

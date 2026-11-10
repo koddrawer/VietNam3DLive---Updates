@@ -1,16 +1,16 @@
 {
-  "version": "1.2.3",
+  "version": "1.2.4",
   "minShell": "1.1.2",
-  "notes": "Tên tỉnh và điểm to hơn khi zoom",
+  "notes": "Thêm bảng Top người chơi",
   "files": {
-    "core.mjs": "059c8c40754a9d64ed4dad482542963eb21553b1f5efb4348933a4c2a2aec9b7",
+    "core.mjs": "bc819b1266e5673ad7a0a2560b44868541faf03385be1d6e14094a01ad80baa5",
     "preload.cjs": "29bb4a931981176f1c2188bb46eff380bea0531468f7ae1e89f7043c694f51db",
     "assets/greetings.json": "fc15b214a517807111e0449d444c47efa73dd52f15ef95b4446e7bf1e8e96238",
     "assets/stories.json": "ae188810f78c8909fae125637c4a1507896a790cff42d6137b5785121fc71590",
-    "src/panel.html": "784306025aa51c8fa9e134b876e6e097c977f8c84c86cb58dba95fbf0984d3a8",
-    "src/panel.js": "81d807ba54a87bd7cb157497a2bb0e87f17187991fc9f130181b0fad059c6768",
+    "src/panel.html": "7a9e823359902854f229addb054a21d39a4235ef70b7f7ce176722ceaa6a4495",
+    "src/panel.js": "56facea47f5ecaf35f50d0293e5b4c75c9ddc790070af8f35f5a5a642fa1f8ae",
     "src/provinces.mjs": "61afc1102d208410bc0fd9f71943837370c587d2e972a9795cb69ed2308d4490",
-    "src/stage.html": "492c6869bb959b55ce0f398ee18421d3cd88a58c04ddc47fadca0643a662967f",
-    "src/stage.js": "489b8ffc8a641108f7cc6cafe048f8d16b1dd07d90879d715891931e136d6f68"
+    "src/stage.html": "ca23eb44a5e8d4a0ca8a3abd9e9131c854318c72c5ff5291070eb10bc780a553",
+    "src/stage.js": "bce21fd85816ad6edf398e99e2ab897a976b973831085384085b7a34af06b125"
   }
 }

@@ -9,13 +9,13 @@ const init = await api.invoke('init');
 cfg = init.cfg;
 
 // ── fields bound to config ──
-const TEXT = ['username', 'apiKey', 'title', 'subtitle', 'ttsUrl', 'vieneuDir', 'updateRepo', 'tierTitle'];
-const CHECK = ['autoReconnect', 'alwaysOnTop', 'ttsEnabled', 'voiceComments', 'fallbackVoice', 'vieneuGpu', 'autoStartVieneu', 'bgmEnabled', 'bgmShuffle', 'sfxEnabled', 'fwSfx', 'autoUpdate', 'showTierBoard', 'joinVoice', 'joinBanner', 'storyEnabled'];
-const NUM = ['pointCooldownSec', 'showCooldownSec', 'commentHoldSec', 'idleHomeSec', 'joinVoiceGapSec', 'storyIdleSec'];
+const TEXT = ['username', 'apiKey', 'title', 'subtitle', 'ttsUrl', 'vieneuDir', 'updateRepo', 'tierTitle', 'playerBoardTitle'];
+const CHECK = ['autoReconnect', 'alwaysOnTop', 'ttsEnabled', 'voiceComments', 'fallbackVoice', 'vieneuGpu', 'autoStartVieneu', 'bgmEnabled', 'bgmShuffle', 'sfxEnabled', 'fwSfx', 'autoUpdate', 'showTierBoard', 'joinVoice', 'joinBanner', 'storyEnabled', 'showPlayerBoard'];
+const NUM = ['pointCooldownSec', 'showCooldownSec', 'commentHoldSec', 'idleHomeSec', 'joinVoiceGapSec', 'storyIdleSec', 'playerBoardCount'];
 const set = patch => api.invoke('set-config', patch).then(c => { cfg = c; });
 function fill() {
   for (const k of TEXT) $(k).value = cfg[k] ?? '';
-  for (const k of CHECK) $(k).checked = ['showTierBoard', 'joinVoice', 'joinBanner', 'storyEnabled'].includes(k) ? cfg[k] !== false : !!cfg[k];
+  for (const k of CHECK) $(k).checked = ['showTierBoard', 'joinVoice', 'joinBanner', 'storyEnabled', 'showPlayerBoard'].includes(k) ? cfg[k] !== false : !!cfg[k];
   for (const k of NUM) $(k).value = cfg[k];
   $('resolution').value = cfg.resolution; $('windowScale').value = cfg.windowScale; $('wsv').textContent = cfg.windowScale + '%';
   $('ttsVolume').value = cfg.ttsVolume; $('volv').textContent = Math.round(cfg.ttsVolume * 100) + '%';
@@ -156,6 +156,20 @@ function armReset(btn, label) {
 }
 armReset($('resetScores'), 'Đặt lại điểm');
 armReset($('resetTop'), '⟲ Reset điểm');
+const escP = v => String(v ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+function renderPlayersBox(list) {
+  $('playersBox').innerHTML = list.length ? list.map((p, i) => `<div style="display:flex;gap:8px"><span style="width:22px;color:var(--ink2)">${i + 1}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escP(p.name)} <span style="color:var(--ink2)">· ${escP(p.prov || '')}</span></span><b style="color:var(--gold)">${p.pts.toLocaleString('vi-VN')}</b></div>`).join('') : '<span class="note">Chưa có ai.</span>';
+}
+api.on('players', renderPlayersBox);
+renderPlayersBox(init.players || []);
+armResetPlayers();
+function armResetPlayers() {
+  const btn = $('resetPlayers'), label = btn.textContent;
+  btn.onclick = () => {
+    if (!btn.classList.contains('armed')) { btn.classList.add('armed'); btn.textContent = 'Bấm lần nữa để reset'; clearTimeout(btn._t); btn._t = setTimeout(() => { btn.classList.remove('armed'); btn.textContent = label; }, 3000); return; }
+    clearTimeout(btn._t); btn.classList.remove('armed'); btn.textContent = label; api.invoke('scores', { action: 'reset-players' });
+  };
+}
 $('clearUsers').onclick = () => api.invoke('scores', { action: 'clear-users' });
 api.on('scores', renderScores);
 

@@ -197,6 +197,17 @@ td input,td select{padding:4px 6px}
   </section>
 
   <section>
+    <h2>Top người chơi <button class="dan" id="resetPlayers">Reset top người chơi</button></h2>
+    <div class="r">
+      <label class="ck"><input type="checkbox" id="showPlayerBoard"> Hiện trên màn hình live</label>
+      <label class="f">Tiêu đề<input type="text" id="playerBoardTitle" placeholder="TOP NGƯỜI CHƠI"></label>
+      <label class="f" style="max-width:130px">Số người<input type="number" id="playerBoardCount" min="1" max="10" step="1"></label>
+    </div>
+    <div class="box" id="playersBox" style="height:auto;max-height:230px;min-height:40px"></div>
+    <p class="note">Điểm người chơi = điểm họ góp cho tỉnh (comment +1, quà theo bảng luật). Nút "Reset điểm" ở trên cùng xóa cả điểm tỉnh lẫn top người chơi.</p>
+  </section>
+
+  <section>
     <h2>Thử nghiệm (không cần live)</h2>
     <div class="r">
       <label class="f">Tỉnh<select id="simProv"><option value="">Ngẫu nhiên</option></select></label>

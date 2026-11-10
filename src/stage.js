@@ -424,9 +424,26 @@ function bgmTick() { // giảm nhỏ nhạc khi đang đọc
 }
 
 // ── cấu hình / điểm ──
-on('config', c => { cfg = c; $('title').innerHTML = `<span class="star">★</span>${esc(c.title || '')}`; $('subtitle').textContent = c.subtitle || ''; renderTiers(); setupBgm(); });
+on('config', c => { cfg = c; $('title').innerHTML = `<span class="star">★</span>${esc(c.title || '')}`; $('subtitle').textContent = c.subtitle || ''; renderTiers(); setupBgm(); renderPlayers(); });
 on('scores', s => renderBoard(s.list, s.changed || []));
 on('chat', pushChat);
+
+// ── top người chơi ──
+let lastPlayers = [];
+function renderPlayers(list = lastPlayers, changed = []) {
+  lastPlayers = list;
+  const n = Math.max(1, Math.min(10, cfg.playerBoardCount || 5));
+  const el = $('players'); const top = list.slice(0, n);
+  el.hidden = cfg.showPlayerBoard === false || !top.length;
+  // bảng tặng quà ẩn thì bảng người chơi lên thay chỗ
+  el.style.top = (cfg.showTierBoard === false ? 226 : 226 + $('tiers').offsetHeight + 18) + 'px';
+  el.innerHTML = `<h3>${esc(cfg.playerBoardTitle || 'TOP NGƯỜI CHƠI')}</h3>` + top.map((p, i) => `<div class="pr${changed.includes(p.uid) ? ' flash' : ''}">
+    <span class="rk">${i + 1}</span>
+    <span class="av">${p.avatar ? `<img src="${esc(p.avatar)}" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover" onerror="this.replaceWith(document.createTextNode('${esc((p.name || '?')[0]).replace(/'/g, '')}'))" alt="">` : esc((p.name || '?')[0])}</span>
+    <span class="who"><b>${esc(p.name)}</b><small>${esc(p.prov || '')}</small></span>
+    <span class="sc">${p.pts.toLocaleString('vi-VN')}</span></div>`).join('');
+}
+on('players', d => renderPlayers(d.list, d.changed || []));
 
 // ── chào người mới vào live ──
 const jt = (t, d) => String(t).replace(/\{ten\}/g, d.name).replace(/\{tinh\}/g, d.province || '');
