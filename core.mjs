@@ -4,13 +4,13 @@ import path from 'node:path';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { spawn, exec } from 'node:child_process';
-import { PROVINCES, findProvince, byName } from './src/provinces.mjs';
+import { PROVINCES, findProvince, byName, norm } from './src/provinces.mjs';
 
 const CTX = globalThis.__vnlive;
 const { TikTokLiveConnection, WebcastEvent, ControlEvent } = CTX.tiktok;
 const ROOT = CTX.ROOT;            // thư mục gốc gói cài (asar)
 const res = rel => CTX.resolve(rel); // file thực tế: bản cập nhật nếu có, không thì bản gốc
-export const CORE_VERSION = '1.2.1';
+export const CORE_VERSION = '1.2.2';
 const UD = app.getPath('userData');
 const CFG_FILE = path.join(UD, 'config.json');
 const SCORE_FILE = path.join(UD, 'scores.json');
@@ -51,7 +51,8 @@ for (const p of PROVINCES) scores[p.name] ??= 0;
 let saveT = null;
 const saveScores = () => { clearTimeout(saveT); saveT = setTimeout(() => writeJSON(SCORE_FILE, scores), 800); };
 let users = readJSON(USERS_FILE, {}); // uid -> { p, t }
-const saveUsers = () => writeJSON(USERS_FILE, users);
+let usersT = null;
+const saveUsers = () => { clearTimeout(usersT); usersT = setTimeout(() => writeJSON(USERS_FILE, users), 1500); };
 
 const DEF_GREET = res('assets/greetings.json');
 {
@@ -148,7 +149,12 @@ function tierFor(coins) {
 function standings() {
   return PROVINCES.map(p => ({ name: p.name, id: p.id, score: scores[p.name] || 0 })).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, 'vi'));
 }
-function pushScores(changed) { const s = standings(); toStage('scores', { list: s, changed }); toPanel('scores', s); saveScores(); }
+let scoreT = null; const scoreChanged = new Set();
+function pushScores(changed) { // gom cập nhật bảng điểm tối đa 4 lần/giây
+  for (const c of changed || []) scoreChanged.add(c);
+  if (scoreT) return;
+  scoreT = setTimeout(() => { scoreT = null; const s = standings(); toStage('scores', { list: s, changed: [...scoreChanged] }); toPanel('scores', s); scoreChanged.clear(); saveScores(); }, 250);
+}
 
 // ───────────────────────── âm thanh ─────────────────────────
 const AUDIO_RE = /\.(mp3|m4a|aac|ogg|oga|opus|wav|flac|webm)$/i;
@@ -204,10 +210,48 @@ function handleComment(user, text) {
   }
   if (now - (lastShow.get(u.uid) || 0) < cfg.showCooldownSec * 1000) return;
   lastShow.set(u.uid, now);
+  greetBuf.add({ u, p, text, pts });
+}
+
+// ── hàng chờ chào: không bỏ sót ai; đông người thì gộp nhiều người vào 1 lượt chào ──
+// pending = các cảnh chào đã gửi sang màn hình nhưng chưa xong
+const pendingGreet = new Map(); // id -> thời điểm gửi
+const greetBuf = {
+  items: [],
+  add(it) {
+    const i = this.items.findIndex(x => x.u.uid === it.u.uid); if (i >= 0) this.items.splice(i, 1); // 1 người chỉ 1 lần trong lượt
+    this.items.push(it); this.flush();
+  },
+  flush() {
+    const now = Date.now();
+    for (const [id, t] of pendingGreet) if (now - t > 90000) pendingGreet.delete(id); // chống kẹt
+    if (!this.items.length || pendingGreet.size >= (cfg.greetBacklog || 2)) return;
+    // mỗi lượt tối đa 8 người (đọc đủ tên); hàng chờ quá dài thì lượt lớn hơn để không bị trễ quá lâu
+    const n = this.items.length;
+    const size = n <= 8 ? n : Math.max(8, Math.ceil(n / 5));
+    const batch = this.items.splice(0, size);
+    if (batch.length === 1) sendSingleGreet(batch[0]); else sendGroupGreet(batch);
+  },
+};
+function sendSingleGreet({ u, p, text, pts }) {
   const vars = { ten: ttsName(u.name), tinh: p.spoken, tong: scores[p.name] };
   const line = Math.random() < 0.75 && provVoice(p, 'greet').length ? pick(provVoice(p, 'greet')) : pick(greetings.generic?.greet);
-  const ttsId = cfg.voiceComments ? tts.say(fill(line, vars), 0) : null;
-  toStage('show', { id: evSeq++, kind: 'comment', prio: 0, user: u, text, province: p.name, provinceId: p.id, points: pts, total: scores[p.name], ttsId });
+  const ttsId = cfg.voiceComments ? tts.say(fill(line, vars), 0, 'show') : null;
+  const id = evSeq++; pendingGreet.set(id, Date.now());
+  toStage('show', { id, kind: 'comment', prio: 0, user: u, text, province: p.name, provinceId: p.id, points: pts, total: scores[p.name], ttsId });
+}
+function sendGroupGreet(batch) {
+  const MAXN = cfg.groupVoiceNames || 8;
+  const names = batch.slice(0, MAXN).map(b => ttsName(b.u.name));
+  const extra = batch.length - names.length;
+  const ds = names.length > 1 && !extra ? names.slice(0, -1).join(', ') + ' và ' + names.at(-1) : names.join(', ');
+  const G = greetings.generic || {};
+  const line = fill(pick(extra > 0 ? G.group_more : G.group) || 'Chào {ds}!', { ds, them: extra });
+  const ttsId = cfg.voiceComments ? tts.say(line, 0, 'show') : null;
+  const id = evSeq++; pendingGreet.set(id, Date.now());
+  toStage('show', { id, kind: 'group', prio: 0, ttsId, extra,
+    users: batch.map(b => ({ name: b.u.name, avatar: b.u.avatar, province: b.p.name, text: b.text, points: b.pts })) });
+  log(`👥 Chào gộp ${batch.length} người: ${batch.map(b => b.u.name).join(', ')}`);
 }
 
 // ── kể chuyện khi rảnh ──
@@ -271,7 +315,7 @@ function handleGift(user, coins, giftName, giftImg) {
   // chưa biết tỉnh: giữ quà 10 phút chờ comment tên tỉnh
   const arr = pendingGifts.get(u.uid) || []; arr.push(g); pendingGifts.set(u.uid, arr);
   setTimeout(() => { const a = pendingGifts.get(u.uid); if (a) { const r = a.filter(x => x !== g); r.length ? pendingGifts.set(u.uid, r) : pendingGifts.delete(u.uid); } }, 10 * 60e3);
-  const ttsId = tts.say(fill(pick(greetings.generic?.ask_province), { ten: ttsName(u.name), xu: coins, diem: points }), 5 + coins);
+  const ttsId = tts.say(fill(pick(greetings.generic?.ask_province), { ten: ttsName(u.name), xu: coins, diem: points }), 5 + coins, 'show');
   toStage('show', { id: evSeq++, kind: 'gift-ask', prio: 5 + coins, user: u, coins, points, giftName, giftImg, tier, ttsId });
   log(`🎁 ${u.name} tặng ${coins} xu nhưng chưa có tỉnh — chờ comment tên tỉnh`);
 }
@@ -284,7 +328,7 @@ function applyGift(u, p, g, text, late) {
   // câu ngắn: cảm ơn theo tỉnh + điểm; chúc mừng chỉ cho quà lớn
   const parts = [pick(provVoice(p, 'thanks')) || pick(greetings.generic?.thanks), pick(greetings.generic?.tier?.[key])];
   if (key === 'hang' || key === 'mega') parts.push(pick(provVoice(p, 'cheer')));
-  const ttsId = tts.say(fill(parts.filter(Boolean).join(' '), vars), 10 + g.coins);
+  const ttsId = tts.say(fill(parts.filter(Boolean).join(' '), vars), 10 + g.coins, 'show');
   toStage('show', { id: evSeq++, kind: 'gift', prio: 10 + g.coins, user: u, text, province: p.name, provinceId: p.id, coins: g.coins, points: g.points, total: scores[p.name], tier: t, giftName: g.giftName, giftImg: g.giftImg, ttsId, sfx: sfxFor(t) });
   log(`🎁 ${u.name} → ${p.name}: ${g.coins} xu = +${g.points} điểm (${key})`);
 }
@@ -296,7 +340,7 @@ const tts = {
     if (!cfg.ttsEnabled || !text) return null;
     if (prio === 0) { // giới hạn số lời chào chờ
       const greets = this.q.filter(x => x.prio === 0);
-      if (greets.length >= cfg.maxGreetQueue) { const d = greets[0]; this.q.splice(this.q.indexOf(d), 1); toStage('tts-drop', { id: d.id, reason: 'overflow' }); }
+      // (không xóa lời chào nữa — khi đông người, lời chào được gộp ở bước trước)
     }
     const id = this.seq++;
     this.q.push({ id, text, prio, kind, t: Date.now() });
@@ -488,6 +532,7 @@ ipcMain.handle('tts', async (e, a) => {
 ipcMain.on('tts-done', () => tts.done());
 ipcMain.on('tts-cancel', (e, id) => tts.cancel(id));
 ipcMain.on('story-idle', () => tellStory(false));
+ipcMain.on('show-done', (e, id) => { if (pendingGreet.delete(id)) greetBuf.flush(); });
 ipcMain.handle('greet-edit', (e, a) => {
   greetings.generic ||= {};
   if (a.set) { for (const k of ['join', 'join_back']) if (Array.isArray(a.set[k])) greetings.generic[k] = a.set[k]; writeJSON(GREET_FILE, greetings); log('Đã lưu lời chào người mới'); }
@@ -520,7 +565,7 @@ ipcMain.handle('greetings', async (e, a) => {
 });
 ipcMain.handle('pick-dir', async () => { const r = await dialog.showOpenDialog(panelWin, { properties: ['openDirectory'] }); return r.canceled ? null : r.filePaths[0]; });
 ipcMain.handle('open-data', () => shell.openPath(UD));
-ipcMain.on('stage-ready', () => { toStage('config', stageCfg()); pushScores([]); });
+ipcMain.on('stage-ready', () => { pendingGreet.clear(); toStage('config', stageCfg()); pushScores([]); greetBuf.flush(); });
 
 // ───────────────────────── boot ─────────────────────────
 export function start() {
@@ -532,6 +577,57 @@ export function start() {
 }
 async function selfTest(dir) {
   const shot = async (w, n) => { try { const img = await w.webContents.capturePage(); fs.writeFileSync(path.join(dir, n + '.png'), img.toPNG()); } catch (e) { console.log('shot fail', e.message); } };
+  if (process.env.VNLIVE_GROUPTEST) {
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    cfg.storyEnabled = false; await wait(7000);
+    const P = ['Hà Nội', 'Huế', 'Cần Thơ', 'Đà Nẵng', 'Nghệ An', 'Lâm Đồng', 'Hà Nội', 'Sài Gòn', 'Quảng Ninh', 'Gia Lai', 'Cà Mau', 'Huế'];
+    P.forEach((pv, i) => handleComment(fakeUser(['Minh Anh', 'Tuấn', 'Hoa', 'Bảo Ngọc', 'Quang Huy', 'Thu Trang'][i % 6] + ' ' + (i + 1)), pv));
+    for (let k = 0; k < 6; k++) { await wait(2500); await shot(stageWin, 'g' + k); }
+    return app.quit();
+  }
+  if (process.env.VNLIVE_LOADTEST) {
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    cfg.storyEnabled = false; cfg.joinVoice = false;
+    for (const k in scores) scores[k] = 0;
+    await wait(7000);
+    const PN = PROVINCES.map(p => p.name);
+    const sent = []; const ttsN = n => ttsName(n);
+    const variants = n => [n, 'em ở ' + n, n.toLowerCase(), norm(n), 'chào live ' + n + ' nè'];
+    let N = 0;
+    for (let i = 0; i < 60; i++) {
+      const name = ['Minh Anh', 'Tuấn', 'Hoa', 'Bảo Ngọc', 'Quang Huy', 'Thu Trang', 'Đức Long', 'Lan Chi'][i % 8] + ' ' + (100 + i);
+      const u = fakeUser(name);
+      if (i % 7 === 3) { handleComment(u, 'chào shop, chị Huệ ơi'); sent.push({ name, prov: null }); }
+      else { const pv = PN[(i * 7) % 34]; const t = variants(pv === 'TP. Hồ Chí Minh' ? 'Sài Gòn' : pv)[i % 5]; handleComment(u, t); sent.push({ name, prov: pv, text: t }); }
+      if (i === 25) { const g = fakeUser('Đại Gia 1'); users[g.uniqueId] = { p: 'Huế', t: Date.now() }; handleGift(g, 10, 'Hoa', ''); }
+      if (i === 45) { const g = fakeUser('Đại Gia 2'); users[g.uniqueId] = { p: 'Hà Nội', t: Date.now() }; handleGift(g, 30, 'Quà', ''); }
+      await wait(100);
+    }
+    for (let k = 0; k < 4; k++) { await wait(2500); await shot(stageWin, 'load' + k); }
+    // chờ màn hình chạy hết
+    for (let k = 0; k < 150; k++) { await wait(1000); const busy = await stageWin.webContents.executeJavaScript('!!(window.__busy && window.__busy())'); if (k % 10 === 0) console.log('WAIT', k, busy, greetBuf.items.length, pendingGreet.size, tts.q.length); if (!busy && greetBuf.items.length === 0 && pendingGreet.size === 0) break; }
+    const shows = await stageWin.webContents.executeJavaScript('window.__shows'); const voices = await stageWin.webContents.executeJavaScript('window.__voices');
+    const want = sent.filter(x => x.prov);
+    const greeted = new Map(); for (const sh of shows) for (const n of sh.names) greeted.set(n, (greeted.get(n) || 0) + 1);
+    const missing = want.filter(x => !greeted.has(x.name)).map(x => x.name);
+    const dup = [...greeted].filter(([n, c]) => c > 1);
+    const wrongNoProv = sent.filter(x => !x.prov && greeted.has(x.name)).map(x => x.name);
+    const total = Object.values(scores).reduce((a, b) => a + b, 0);
+    let mism = 0, orphan = 0;
+    for (const v of voices) {
+      const sh = shows.find(s => s.id === v.cur);
+      if (!v.owned) { orphan++; console.log('VOICE NOT OWNED', JSON.stringify(v), JSON.stringify(shows.map(x => [x.id, x.kind, x.voice]))); continue; }
+      const need = sh.kind === 'group' ? sh.names.slice(0, 8) : sh.names;
+      for (const n of need) if (!v.text.includes(ttsN(n))) { mism++; console.log('NAME MISMATCH show', sh.names.join('/'), '| voice', v.text); }
+    }
+    const perProv = {}; for (const x of want) perProv[x.prov] = (perProv[x.prov] || 0) + 1;
+    const provErr = Object.entries(perProv).filter(([k, v]) => scores[k] !== v + (k === 'Huế' ? 60 : 0) + (k === 'Hà Nội' ? 200 : 0));
+    console.log('TRACE\n' + (await stageWin.webContents.executeJavaScript('window.__log.join("\\n")')));
+    console.log('LOAD comments', sent.length, 'withProv', want.length, 'shows', shows.length, 'groups', shows.filter(s => s.kind === 'group').length,
+      '| missing', missing.length, missing.slice(0, 5), '| duplicate', dup.length, '| greetedWithoutProv', wrongNoProv.length,
+      '| groupSizes', shows.filter(s => s.kind === 'group').map(s => s.names.length).join(','), '| voices', voices.length, 'mismatch', mism, 'orphan', orphan, '| totalPts', total, 'expected', want.length + 260, '| provErr', JSON.stringify(provErr));
+    return app.quit();
+  }
   if (process.env.VNLIVE_STORYTEST) {
     const wait = ms => new Promise(r => setTimeout(r, ms));
     cfg.storyIdleSec = 5; toStage('config', stageCfg());

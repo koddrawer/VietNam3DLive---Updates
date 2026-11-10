@@ -166,6 +166,14 @@ function card(ev) {
   else if (ev.kind === 'gift') { $('cC').textContent = `Tặng ${ev.giftName || 'quà'} · ${ev.coins} xu` + (ev.text ? ` — “${ev.text}”` : ''); $('cR').textContent = `+${ev.points.toLocaleString('vi-VN')} điểm cho ${ev.province}!`; }
   else { $('cC').textContent = `Tặng ${ev.giftName || 'quà'} · ${ev.coins} xu`; $('cR').textContent = `Comment tên tỉnh để nhận +${ev.points} điểm!`; }
   $('cG').hidden = !ev.giftImg; if (ev.giftImg) $('cG').src = ev.giftImg;
+  if (ev.kind === 'group') {
+    c.className = 'card on group';
+    $('cAv').src = ev.users[0]?.avatar || STORY_ICON;
+    $('cN').textContent = `Chào ${ev.users.length} bạn vừa comment!`;
+    $('cC').textContent = ev.users.map(x => x.name).join(', ');
+    const by = {}; for (const x of ev.users) by[x.province] = (by[x.province] || 0) + (x.points || 0);
+    $('cR').textContent = Object.entries(by).filter(([, v]) => v).map(([k, v]) => `+${v} ${k}`).join(' · ');
+  }
   if (ev.kind === 'story') {
     const T = { dangian: 'TRUYỆN DÂN GIAN', ma: 'TRUYỆN MA', cuoi: 'TRUYỆN CƯỜI', ngungon: 'TRUYỆN NGỤ NGÔN' };
     c.className = 'card on story ' + ev.type;
@@ -173,7 +181,8 @@ function card(ev) {
     $('cC').textContent = ev.lines?.[0] || ''; $('cR').textContent = ev.province ? `Chuyện đất ${ev.province}` : 'Chuyện xưa Việt Nam';
   }
 }
-function clearMarker() { if (marker) { scene.remove(marker); marker.element.remove(); marker = null; } }
+let groupMarkers = [];
+function clearMarker() { if (marker) { scene.remove(marker); marker.element.remove(); marker = null; } for (const m of groupMarkers) { scene.remove(m); m.element.remove(); } groupMarkers = []; }
 function highlight(name, on) { const P = prov[name]; if (!P) return; P.hl = on ? performance.now() : 0; P.label.inner.classList.toggle('hot', on); if (!on) P.mesh.material.emissiveIntensity = 0; }
 
 function makeMarker(ev, cls) {
@@ -194,13 +203,11 @@ function addHang(ev) {
 }
 
 on('show', ev => {
-  if (!prov[ev.province] && ev.kind !== 'gift-ask') return;
+  if (!prov[ev.province] && !['gift-ask', 'story', 'group'].includes(ev.kind)) { api.send('show-done', ev.id); return; }
   ev.voice = ev.voice || (ev.ttsId != null ? [ev.ttsId] : []);
   for (const id of ev.voice) linked.add(id);
+  L('SHOWIN ' + ev.id + ' voice=' + ev.voice.join(','));
   if (ev.kind === 'story') storyAsked = false;
-  if (ev.kind === 'comment') { // tránh dồn ứ: giữ tối đa 6 comment chờ
-    const cm = queue.filter(q => q.kind === 'comment'); if (cm.length >= 6) dropShow(cm[0]);
-  }
   queue.push(ev); queue.sort((a, b) => b.prio - a.prio || a.id - b.id);
   if (cur?.kind === 'story' && ev.prio > cur.prio && !cur.abort) abortStory(); // có người tương tác → dừng kể sau câu đang đọc
   // quà được xếp lên đầu hàng chờ, nhưng vẫn để người đang được chào nghe hết câu
@@ -212,22 +219,40 @@ function next() {
   if (!ev) { $('card').className = 'card'; clearTimeout(homeTimer); homeTimer = setTimeout(() => goHome(), (cfg.idleHomeSec || 6) * 1000); return; }
   clearTimeout(homeTimer); cur = ev; atHome = false; play(ev);
 }
-function dropShow(ev) { const i = queue.indexOf(ev); if (i >= 0) queue.splice(i, 1); for (const id of ev.voice || []) if (!ttsFinished.has(id)) cancelTts(id); }
+function dropShow(ev) { const i = queue.indexOf(ev); if (i >= 0) queue.splice(i, 1); api.send('show-done', ev.id); for (const id of ev.voice || []) if (!ttsFinished.has(id)) cancelTts(id); }
 function abortStory() { cur.abort = true; for (const id of cur.voice) if (!ttsFinished.has(id) && playing?.id !== id) cancelTts(id); }
 function finish(early) {
   clearTimeout(curTimer); if (!cur) return;
   if (early) for (const id of cur.voice || []) if (!ttsFinished.has(id)) { if (playing?.id === id) playing.stop(); cancelTts(id); }
   if (cur.kind === 'story') { $('card').classList.remove('story'); lastBusy = performance.now(); }
   if (cur.province) highlight(cur.province, false);
-  L('END ' + cur.id); clearMarker(); cur = null; next();
+  for (const n of cur.hlList || []) highlight(n, false);
+  L('END ' + cur.id); clearMarker(); api.send('show-done', cur.id); cur = null; next();
 }
 window.__log = [];
 const L = m => { window.__log.push(Math.round(performance.now()) + ' ' + m); if (window.__log.length > 300) window.__log.shift(); };
 function play(ev) {
-  L('SHOW ' + ev.id + ' ' + (ev.user?.name || '') + ' tts=' + ev.ttsId);
+  (window.__shows ||= []).push({ id: ev.id, kind: ev.kind, names: ev.user ? [ev.user.name] : (ev.users || []).map(x => x.name), voice: ev.voice }); if (window.__shows.length > 400) window.__shows.shift();
+  L('SHOW ' + ev.id + ' ' + ev.kind + ' ' + (ev.user?.name || (ev.users || []).map(x => x.name).join('/')) + ' tts=' + (ev.voice || []).join(','));
   card(ev);
   let dur;
   if (ev.kind === 'gift-ask') { dur = 4000; sfx(ev.sfx || '../assets/sfx/coin.wav'); }
+  else if (ev.kind === 'group') {
+    // nhiều người cùng lúc: mỗi người 1 avatar nhỏ trên tỉnh của mình
+    const list = ev.users.filter(x => prov[x.province]);
+    const names = [...new Set(list.map(x => x.province))];
+    ev.hlList = names; for (const n of names) { highlight(n, true); prov[n].label.inner.classList.remove('hot'); }
+    if (names.length === 1) { const P = prov[names[0]]; const v = viewOf(P.anchor, Math.max(P.dist * 1.6, 30)); flyTo(v.t, v.p, 1300); }
+    else { atHome = false; flyTo(HOME.t, HOME.p, 1300); }
+    const count = {};
+    for (const x of list.slice(0, 16)) {
+      const k = count[x.province] = (count[x.province] || 0) + 1;
+      const pos = prov[x.province].anchor.clone().add(new THREE.Vector3(((k - 1) % 3 - 1) * 3.2, 0.4, -Math.floor((k - 1) / 3) * 3.2));
+      const o = css2d(`${x.points ? '<div class="pts">+1</div>' : ''}${imgTag(x.avatar, 'av')}<div class="nm">${esc(x.name)}</div><div class="pin"></div>`, 'mk mini', pos);
+      o.center.set(0.5, 1); groupMarkers.push(o);
+    }
+    dur = 3500;
+  }
   else if (ev.kind === 'story') {
     dur = 1500;
     const P = prov[ev.province];
@@ -296,7 +321,10 @@ on('tts', d => {
   api.send('tts-done'); // đã nhận → main tạo câu tiếp theo
   if (ttsFinished.has(d.id)) return;
   d.got = performance.now();
-  if (linked.has(d.id)) store.set(d.id, d); else freeQ.push(d);
+  L('TTSIN ' + d.id + ' linked=' + linked.has(d.id) + ' kind=' + d.kind);
+  // giọng thuộc một cảnh (lời chào, cảm ơn, kể chuyện) chỉ được phát trong đúng cảnh đó, kể cả khi đến trước cảnh
+  if (linked.has(d.id) || d.kind === 'show' || d.kind === 'story') store.set(d.id, d); else freeQ.push(d);
+  for (const [id, x] of store) if (!linked.has(id) && performance.now() - x.got > 60000) store.delete(id);
   pumpVoice();
 });
 on('tts-drop', x => {
@@ -319,6 +347,7 @@ function pumpVoice() {
 }
 function ttsDone() { L('VOICE_END ' + playing?.id); if (playing?.id != null) { ttsFinished.add(playing.id); voiceEndAt.set(playing.id, performance.now()); } playing = null; pumpVoice(); }
 async function playVoice(d) {
+  (window.__voices ||= []).push({ vid: d.id, text: d.text, cur: cur?.id ?? null, owned: !!cur?.voice?.includes(d.id) }); if (window.__voices.length > 400) window.__voices.shift();
   if (d.kind === 'story' && cur?.kind === 'story') { $('cC').textContent = d.text; $('cC').classList.remove('fade'); void $('cC').offsetWidth; $('cC').classList.add('fade'); }
   L('VOICE ' + d.id + ' ' + d.text.slice(0, 30));
   playing = { id: d.id, stop() {} };
@@ -342,7 +371,14 @@ async function playVoice(d) {
 // ── kể chuyện khi rảnh ──
 const STORY_ICON = 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='#7a3d12'/><path d='M22 28h24c4 0 4 2 4 6v42c0-4-2-6-6-6H22z' fill='#ffe3a8'/><path d='M78 28H54c-4 0-4 2-4 6v42c0-4 2-6 6-6h22z' fill='#ffd27a'/></svg>`);
 let lastBusy = performance.now(), storyAsked = false, storyAskedAt = 0;
+let lastPrune = 0;
+function pruneIds(now) { // dọn bộ nhớ khi live chạy nhiều giờ
+  if (now - lastPrune < 60000) return; lastPrune = now;
+  for (const set of [ttsFinished, linked]) if (set.size > 3000) { const ids = [...set].sort((a, b) => a - b); for (const id of ids.slice(0, ids.length - 1500)) set.delete(id); }
+  if (voiceEndAt.size > 3000) { const ids = [...voiceEndAt.keys()].sort((a, b) => a - b); for (const id of ids.slice(0, ids.length - 1500)) voiceEndAt.delete(id); }
+}
 function idleTick(now) {
+  pruneIds(now);
   if (cur || queue.length || playing || freeQ.length) { lastBusy = now; return; }
   if (!cfg.storyEnabled) return;
   if (storyAsked && now - storyAskedAt > 20000) storyAsked = false;
@@ -437,3 +473,4 @@ renderer.setAnimationLoop(now => {
 });
 api.send('stage-ready');
 window.__ready = true;
+window.__busy = () => !!(cur || queue.length || playing || [...store.keys()].some(id => linked.has(id)));

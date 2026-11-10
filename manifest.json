@@ -1,16 +1,16 @@
 {
-  "version": "1.2.1",
+  "version": "1.2.2",
   "minShell": "1.1.2",
-  "notes": "Tùy chỉnh lời chào và chữ chào người mới vào",
+  "notes": "Không bỏ sót người comment khi đông: gộp lời chào, nhận diện tỉnh chính xác hơn",
   "files": {
-    "core.mjs": "3054ae80582e63e623ad53e613441b6014b222571feba7a76165aa8c96d765a4",
+    "core.mjs": "55122c738ee90598e041b4d36e75994cfd3a067c9f9892314c9c9d8008a2710a",
     "preload.cjs": "29bb4a931981176f1c2188bb46eff380bea0531468f7ae1e89f7043c694f51db",
-    "assets/greetings.json": "e00120f91a221e0a1cdc5c111784ea141eebf96f9f4f1fa4888201e7cf605ef2",
+    "assets/greetings.json": "fc15b214a517807111e0449d444c47efa73dd52f15ef95b4446e7bf1e8e96238",
     "assets/stories.json": "ae188810f78c8909fae125637c4a1507896a790cff42d6137b5785121fc71590",
     "src/panel.html": "7e842c1e3119187fe370c457647e6ede311504de605fa40802365c1ab83a24a5",
     "src/panel.js": "11795d12f2e92abc15d877156a825530e51b44f0135691f8545d16a482873ad6",
-    "src/provinces.mjs": "65d16ce0264d442a59bbb34f3512d33426d0951f1ccbcd5d030584ce8ce4aa58",
-    "src/stage.html": "bbb7b1f85ddc24741353c06e7442474df66679ef6e5e0e108f821b561eea7d4f",
-    "src/stage.js": "f190cc87ded5dbf1cdfeb78002ded10dea53f4d6480edc491e529cfce61a6fc5"
+    "src/provinces.mjs": "61afc1102d208410bc0fd9f71943837370c587d2e972a9795cb69ed2308d4490",
+    "src/stage.html": "a49f25e7839fa9fca9c38be57d5771b786ecfb4dbc97de59ee90b255b11da1a2",
+    "src/stage.js": "78abe6d14eb2335ffdac428823c8a66fcd2121d62d0f905d7fc91ea497a5ffcd"
   }
 }
