@@ -1,5 +1,5 @@
 {
-  "_huong_dan": "Sửa thoải mái rồi bấm 'Nạp lại lời chào'. {ten}=tên người xem, {tinh}=tên tỉnh, {xu}=số xu, {diem}=điểm được cộng, {tong}=tổng điểm tỉnh. greet=chào khi comment; thanks=cảm ơn khi donate; cheer=chúc mừng (chỉ đọc khi quà treo avatar/pháo hoa). Câu donate = thanks + 1 câu theo bậc (generic.tier).",
+  "_huong_dan": "Sửa thoải mái rồi bấm 'Nạp lại lời chào'. {ten}=tên người xem, {tinh}=tên tỉnh, {xu}=số xu, {diem}=điểm được cộng, {tong}=tổng điểm tỉnh. greet=chào khi comment; thanks=cảm ơn khi donate; cheer=chúc mừng (chỉ đọc khi quà treo avatar/pháo hoa). Câu donate = thanks + 1 câu theo bậc (generic.tier). join=chào người mới vào live; join_back=chào người cũ quay lại (đã từng comment tên tỉnh).",
   "generic": {
     "greet": [
       "Chào {ten} đến từ {tinh}, cảm ơn bạn đã ghé live nha!",
@@ -32,6 +32,17 @@
     "thanks": [
       "Cảm ơn {ten} nhiều nha!",
       "Cảm ơn {ten}!"
+    ],
+    "join": [
+      "Chào {ten} vào live nha!",
+      "Chào mừng {ten}! Comment tên tỉnh để ghi điểm nhé!",
+      "{ten} ơi, chào bạn! Bạn ở tỉnh nào?",
+      "Chào {ten}, cùng tô điểm bản đồ quê mình nào!",
+      "Xin chào {ten}, chúc bạn xem live vui vẻ!"
+    ],
+    "join_back": [
+      "Chào {ten} người {tinh} quay lại!",
+      "{ten} của {tinh} đã quay lại, chào bạn!"
     ]
   },
   "provinces": {
@@ -648,5 +659,5 @@
       ]
     }
   },
-  "_version": 2
+  "_version": 3
 }

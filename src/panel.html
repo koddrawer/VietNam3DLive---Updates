@@ -105,6 +105,8 @@ td input,td select{padding:4px 6px}
     <div class="r">
       <label class="ck"><input type="checkbox" id="ttsEnabled"> Bật giọng đọc</label>
       <label class="ck"><input type="checkbox" id="voiceComments"> Chào người comment</label>
+      <label class="ck"><input type="checkbox" id="joinVoice"> Chào người mới vào</label>
+      <label class="ck"><input type="checkbox" id="joinBanner"> Hiện chữ chào người mới</label>
       <label class="ck"><input type="checkbox" id="fallbackVoice"> Giọng Windows dự phòng khi VieNeu lỗi</label>
     </div>
     <div class="r">
@@ -177,6 +179,7 @@ td input,td select{padding:4px 6px}
     <div class="grid2">
       <label class="f">Mỗi người chỉ được +1 điểm/… giây<input type="number" id="pointCooldownSec" min="0" step="1"></label>
       <label class="f">Mỗi người được zoom + chào lại sau … giây<input type="number" id="showCooldownSec" min="0" step="1"></label>
+      <label class="f">Giọng chào người mới cách nhau ít nhất … giây<input type="number" id="joinVoiceGapSec" min="0" step="1"></label>
       <label class="f">Thời gian dừng ở mỗi comment (giây)<input type="number" id="commentHoldSec" min="1" step="0.5"></label>
       <label class="f">Về toàn cảnh sau … giây rảnh<input type="number" id="idleHomeSec" min="1" step="1"></label>
     </div>
@@ -195,6 +198,7 @@ td input,td select{padding:4px 6px}
       <label class="f">Tỉnh<select id="simProv"><option value="">Ngẫu nhiên</option></select></label>
       <button id="simComment">Comment thử</button>
       <button id="simBurst">10 comment liên tiếp</button>
+      <button id="simJoin">Người mới vào</button>
     </div>
     <div class="r" id="simGifts"></div>
     <div class="r"><button id="simNoProv">Tặng 10 xu khi chưa có tỉnh</button><span class="note">→ sau đó bấm "Comment thử" sẽ không áp vào người này; dùng để xem lời nhắc comment tên tỉnh.</span></div>

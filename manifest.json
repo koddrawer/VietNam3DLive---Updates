@@ -1,15 +1,15 @@
 {
-  "version": "1.1.6",
+  "version": "1.1.7",
   "minShell": "1.1.2",
-  "notes": "Thêm nút Reset điểm ở thanh trên cùng",
+  "notes": "Chào người mới vào live (giọng + chữ)",
   "files": {
-    "core.mjs": "dae919129b076e26eb687da4e105fc5f37ba7be3b7daf1a5cf30d38c023430c2",
+    "core.mjs": "8312245a6a3f8da6d3058b8eebd2fad6b790a4b3e7a7b52fa7bbc987961f26c0",
     "preload.cjs": "29bb4a931981176f1c2188bb46eff380bea0531468f7ae1e89f7043c694f51db",
-    "assets/greetings.json": "a154b2e4e98a14d495454567e790779d3b44ad2d761d656ce2992078a15002d3",
-    "src/panel.html": "8e810be42d4b67bf02e8c68e79a173891e2258c9cc506fad865b371b8a8a85a2",
-    "src/panel.js": "f94bb6375d570c37932d95a50c64ca4f8e91163392b4d9b056d5f2635c8f8b2d",
+    "assets/greetings.json": "e00120f91a221e0a1cdc5c111784ea141eebf96f9f4f1fa4888201e7cf605ef2",
+    "src/panel.html": "9716d6b44d9a48f937f231f047aef5eb46d1506c8186bdac72d2d71029411d74",
+    "src/panel.js": "9986da44d12d6846051640d9b0191aeafa15c7310fd246998e2d7db049f3cb1c",
     "src/provinces.mjs": "65d16ce0264d442a59bbb34f3512d33426d0951f1ccbcd5d030584ce8ce4aa58",
-    "src/stage.html": "220673dcca945d5bcc3335c44678b1dee34ddf14f9aaa201f635a38083b6f953",
-    "src/stage.js": "0dc468481bf1d39149bd6e0e63534f6ab245a159b1fd6ffac77434c20ed856be"
+    "src/stage.html": "9f5b2ea3f9aafe7187a76b1560cc482bc3b04e261a80a99e62d50869bfb56782",
+    "src/stage.js": "892a4274e398ba7935f9ba242344acfa72de55ea004e34074f156a5505b437eb"
   }
 }

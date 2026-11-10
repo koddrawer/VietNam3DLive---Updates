@@ -10,12 +10,12 @@ cfg = init.cfg;
 
 // ── fields bound to config ──
 const TEXT = ['username', 'apiKey', 'title', 'subtitle', 'ttsUrl', 'vieneuDir', 'updateRepo', 'tierTitle'];
-const CHECK = ['autoReconnect', 'alwaysOnTop', 'ttsEnabled', 'voiceComments', 'fallbackVoice', 'vieneuGpu', 'autoStartVieneu', 'bgmEnabled', 'bgmShuffle', 'sfxEnabled', 'fwSfx', 'autoUpdate', 'showTierBoard'];
-const NUM = ['pointCooldownSec', 'showCooldownSec', 'commentHoldSec', 'idleHomeSec'];
+const CHECK = ['autoReconnect', 'alwaysOnTop', 'ttsEnabled', 'voiceComments', 'fallbackVoice', 'vieneuGpu', 'autoStartVieneu', 'bgmEnabled', 'bgmShuffle', 'sfxEnabled', 'fwSfx', 'autoUpdate', 'showTierBoard', 'joinVoice', 'joinBanner'];
+const NUM = ['pointCooldownSec', 'showCooldownSec', 'commentHoldSec', 'idleHomeSec', 'joinVoiceGapSec'];
 const set = patch => api.invoke('set-config', patch).then(c => { cfg = c; });
 function fill() {
   for (const k of TEXT) $(k).value = cfg[k] ?? '';
-  for (const k of CHECK) $(k).checked = k === 'showTierBoard' ? cfg[k] !== false : !!cfg[k];
+  for (const k of CHECK) $(k).checked = ['showTierBoard', 'joinVoice', 'joinBanner'].includes(k) ? cfg[k] !== false : !!cfg[k];
   for (const k of NUM) $(k).value = cfg[k];
   $('resolution').value = cfg.resolution; $('windowScale').value = cfg.windowScale; $('wsv').textContent = cfg.windowScale + '%';
   $('ttsVolume').value = cfg.ttsVolume; $('volv').textContent = Math.round(cfg.ttsVolume * 100) + '%';
@@ -159,6 +159,7 @@ api.on('scores', renderScores);
 // ── simulator ──
 $('simProv').innerHTML += init.provinces.map(p => `<option>${p.name}</option>`).join('');
 $('simComment').onclick = () => api.invoke('simulate', { type: 'comment', province: $('simProv').value || null });
+$('simJoin').onclick = () => api.invoke('simulate', { type: 'join' });
 $('simBurst').onclick = () => { for (let i = 0; i < 10; i++) setTimeout(() => api.invoke('simulate', { type: 'comment' }), i * 250); };
 $('simGifts').innerHTML = cfg.tiers.map(t => `<button data-c="${t.coins}">Tặng ${t.coins} xu</button>`).join('');
 $('simGifts').onclick = e => { const b = e.target.closest('button'); if (b) api.invoke('simulate', { type: 'gift', coins: +b.dataset.c, province: $('simProv').value || null }); };
@@ -172,7 +173,7 @@ $('restoreGreet').onclick = () => api.invoke('greetings', 'restore');
 // ── feed & log ──
 const esc = s => String(s ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 api.on('feed', f => {
-  const b = $('feed'); const d = document.createElement('div'); if (f.kind === 'gift') d.className = 'g';
+  const b = $('feed'); const d = document.createElement('div'); if (f.kind === 'gift') d.className = 'g'; if (f.kind === 'join') d.style.color = 'var(--ink2)';
   d.innerHTML = `${new Date().toLocaleTimeString('vi-VN')}  ${f.kind === 'gift' ? '🎁 ' : ''}<b>${esc(f.name)}</b>: ${esc(f.text)}${f.province ? ` <i>→ ${esc(f.province)}</i>` : ''}`;
   b.appendChild(d); while (b.children.length > 200) b.firstChild.remove(); b.scrollTop = b.scrollHeight;
 });

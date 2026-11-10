@@ -277,6 +277,7 @@ const ttsFinished = new Set(), voiceEndAt = new Map();
 on('tts', d => {
   api.send('tts-done'); // đã nhận → main tạo câu tiếp theo
   if (ttsFinished.has(d.id)) return;
+  d.got = performance.now();
   if (linked.has(d.id)) store.set(d.id, d); else freeQ.push(d);
   pumpVoice();
 });
@@ -291,7 +292,11 @@ function cancelTts(id) { ttsFinished.add(id); voiceEndAt.set(id, voiceEndAt.get(
 function pumpVoice() {
   if (playing) return;
   if (cur && cur.ttsId != null && !ttsFinished.has(cur.ttsId)) { const d = store.get(cur.ttsId); if (d) { store.delete(cur.ttsId); playVoice(d); } return; }
-  if (freeQ.length) playVoice(freeQ.shift());
+  // lời chào người mới: chỉ đọc khi màn hình đang rảnh, quá 10 giây thì bỏ
+  const now = performance.now();
+  freeQ = freeQ.filter(d => d.kind !== 'join' || now - d.got < 10000);
+  const i = freeQ.findIndex(d => d.kind !== 'join' || (!cur && !queue.length));
+  if (i >= 0) playVoice(freeQ.splice(i, 1)[0]);
 }
 function ttsDone() { L('VOICE_END ' + playing?.id); if (playing?.id != null) { ttsFinished.add(playing.id); voiceEndAt.set(playing.id, performance.now()); } playing = null; pumpVoice(); }
 async function playVoice(d) {
@@ -356,6 +361,26 @@ function bgmTick() { // giảm nhỏ nhạc khi đang đọc
 on('config', c => { cfg = c; $('title').innerHTML = `<span class="star">★</span>${esc(c.title || '')}`; $('subtitle').textContent = c.subtitle || ''; renderTiers(); setupBgm(); });
 on('scores', s => renderBoard(s.list, s.changed || []));
 on('chat', pushChat);
+
+// ── chào người mới vào live ──
+let joinQ = [], joinBusy = false;
+on('join', d => {
+  const t = $('ticker'); const div = document.createElement('div'); div.className = 'jn';
+  div.innerHTML = `${imgTag(d.avatar)}<b>${esc(d.name)}</b><span>vừa vào live 👋</span>${d.province ? `<i>${esc(d.province)}</i>` : ''}`;
+  t.appendChild(div); while (t.children.length > 5) t.firstChild.remove();
+  joinQ.push(d); if (joinQ.length > 4) joinQ.splice(0, joinQ.length - 4);
+  showJoin();
+});
+function showJoin() {
+  if (joinBusy || !joinQ.length) return;
+  const d = joinQ.shift(); joinBusy = true;
+  const el = $('welcome');
+  const more = joinQ.length ? `<em>+${joinQ.length} người nữa</em>` : '';
+  el.innerHTML = `${imgTag(d.avatar)}<div><small>CHÀO MỪNG</small><b>${esc(d.name)}</b>${d.province ? `<span>người ${esc(d.province)} quay lại</span>` : '<span>Comment tên tỉnh để ghi điểm!</span>'}</div>${more}`;
+  el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  const hold = joinQ.length ? 1800 : 3200;
+  setTimeout(() => { el.classList.remove('on'); setTimeout(() => { joinBusy = false; showJoin(); }, 350); }, hold);
+}
 renderTiers();
 
 // ── vòng lặp ──

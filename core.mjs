@@ -10,7 +10,7 @@ const CTX = globalThis.__vnlive;
 const { TikTokLiveConnection, WebcastEvent, ControlEvent } = CTX.tiktok;
 const ROOT = CTX.ROOT;            // thư mục gốc gói cài (asar)
 const res = rel => CTX.resolve(rel); // file thực tế: bản cập nhật nếu có, không thì bản gốc
-export const CORE_VERSION = '1.1.6';
+export const CORE_VERSION = '1.1.7';
 const UD = app.getPath('userData');
 const CFG_FILE = path.join(UD, 'config.json');
 const SCORE_FILE = path.join(UD, 'scores.json');
@@ -27,6 +27,7 @@ const DEFAULTS = {
   ttsEnabled: true, voiceComments: true, ttsUrl: 'http://127.0.0.1:8000', ttsKey: '', voice: 'Ngọc Huyền', ttsVolume: 1, fallbackVoice: true,
   vieneuDir: '', vieneuGpu: false, autoStartVieneu: false,
   autoUpdate: true, updateRepo: 'koddrawer/VietNam3DLive---Updates', updateBranch: 'main',
+  joinVoice: true, joinBanner: true, joinVoiceGapSec: 8,
   bgmEnabled: false, bgmFiles: [], bgmPath: '', bgmVolume: 0.35, bgmDuck: 0.35, bgmShuffle: true,
   sfxEnabled: true, sfxVolume: 0.8, fwSfx: true,
   pointCooldownSec: 3, showCooldownSec: 15, commentHoldSec: 4, idleHomeSec: 6, maxGreetQueue: 5,
@@ -55,6 +56,11 @@ const DEF_GREET = res('assets/greetings.json');
 {
   const def = readJSON(DEF_GREET, {}); const mine = readJSON(GREET_FILE, null);
   if (!mine) fs.copyFileSync(DEF_GREET, GREET_FILE);
+  else if ((mine._version || 1) >= 2 && (mine._version || 1) < (def._version || 1)) { // giữ lời bạn đã sửa, chỉ thêm mục mới
+    const add = (a, b) => { for (const k in b) { if (!(k in a)) a[k] = b[k]; else if (a[k] && typeof a[k] === 'object' && !Array.isArray(a[k])) add(a[k], b[k]); } };
+    add(mine, def); mine._version = def._version; writeJSON(GREET_FILE, mine);
+    setTimeout(() => log(`Đã thêm lời thoại mới (bản ${def._version}), giữ nguyên các câu bạn đã sửa`), 3000);
+  }
   else if ((mine._version || 1) < (def._version || 1)) { // có bộ lời thoại mới: lưu bản cũ rồi thay
     fs.copyFileSync(GREET_FILE, path.join(UD, `greetings.backup-v${mine._version || 1}.json`)); fs.copyFileSync(DEF_GREET, GREET_FILE);
     setTimeout(() => log(`Đã cập nhật lời thoại lên bản ${def._version} (bản cũ lưu ở greetings.backup-v${mine._version || 1}.json)`), 3000);
@@ -197,6 +203,23 @@ function handleComment(user, text) {
   toStage('show', { id: evSeq++, kind: 'comment', prio: 0, user: u, text, province: p.name, provinceId: p.id, points: pts, total: scores[p.name], ttsId });
 }
 
+// ── người mới vào live ──
+const joined = new Map(); let lastJoinVoice = 0;
+function handleJoin(user) {
+  const u = normUser(user); const now = Date.now();
+  if (now - (joined.get(u.uid) || 0) < 10 * 60e3) return; // mỗi người chào 1 lần / 10 phút
+  joined.set(u.uid, now); if (joined.size > 5000) joined.clear();
+  const known = users[u.uid] && byName[users[u.uid].p] ? byName[users[u.uid].p] : null;
+  if (cfg.joinBanner) toStage('join', { name: u.name, avatar: u.avatar, province: known?.name || null });
+  toPanel('feed', { kind: 'join', name: u.name, text: 'vừa vào live', province: known?.name || null });
+  // giọng chào: chỉ khi không có ai đang chờ đọc, cách nhau ít nhất joinVoiceGapSec
+  if (!cfg.voiceComments || !cfg.joinVoice || tts.q.length || now - lastJoinVoice < cfg.joinVoiceGapSec * 1000) return;
+  lastJoinVoice = now;
+  const G = greetings.generic || {};
+  const line = known && G.join_back?.length ? pick(G.join_back) : pick(G.join);
+  if (line) tts.say(fill(line, { ten: ttsName(u.name), tinh: known?.spoken || '' }), -1, 'join');
+}
+
 function handleGift(user, coins, giftName, giftImg) {
   const u = normUser(user);
   const { tier, points } = tierFor(coins);
@@ -229,14 +252,14 @@ function applyGift(u, p, g, text, late) {
 // ───────────────────────── TTS (VieNeu) ─────────────────────────
 const tts = {
   q: [], busy: false, inflight: 0, online: null, seq: 1,
-  say(text, prio) {
+  say(text, prio, kind) {
     if (!cfg.ttsEnabled || !text) return null;
     if (prio === 0) { // giới hạn số lời chào chờ
       const greets = this.q.filter(x => x.prio === 0);
       if (greets.length >= cfg.maxGreetQueue) { const d = greets[0]; this.q.splice(this.q.indexOf(d), 1); toStage('tts-drop', { id: d.id, reason: 'overflow' }); }
     }
     const id = this.seq++;
-    this.q.push({ id, text, prio, t: Date.now() });
+    this.q.push({ id, text, prio, kind, t: Date.now() });
     this.pump();
     return id;
   },
@@ -247,11 +270,11 @@ const tts = {
     try {
       const wav = await synth(item.text);
       this.online = true;
-      this.inflight++; toStage('tts', { id: item.id, prio: item.prio, text: item.text, wav, volume: cfg.ttsVolume });
+      this.inflight++; toStage('tts', { id: item.id, prio: item.prio, kind: item.kind, text: item.text, wav, volume: cfg.ttsVolume });
     } catch (e) {
       if (this.online !== false) log('⚠️ VieNeu TTS lỗi: ' + e.message + (cfg.fallbackVoice ? ' → dùng giọng Windows dự phòng' : ''));
       this.online = false;
-      if (cfg.fallbackVoice) { this.inflight++; toStage('tts', { id: item.id, prio: item.prio, text: item.text, fallback: true, volume: cfg.ttsVolume }); }
+      if (cfg.fallbackVoice) { this.inflight++; toStage('tts', { id: item.id, prio: item.prio, kind: item.kind, text: item.text, fallback: true, volume: cfg.ttsVolume }); }
       else toStage('tts-drop', item.id);
     }
     toPanel('tts-status', { online: this.online, queue: this.q.length });
@@ -332,6 +355,7 @@ async function connectTikTok() {
   toPanel('tt-status', { state: 'connecting', msg: 'Đang kết nối @' + cfg.username + '…' });
   const c = new TikTokLiveConnection(cfg.username.replace(/^@/, ''), { signApiKey: cfg.apiKey || undefined, processInitialData: false, enableExtendedGiftInfo: false });
   conn = c;
+  c.on(WebcastEvent.MEMBER, d => { try { handleJoin(d.user); } catch (e) { log('Lỗi người vào: ' + e.message); } });
   c.on(WebcastEvent.CHAT, d => { try { handleComment(d.user, d.comment ?? d.content); } catch (e) { log('Lỗi chat: ' + e.message); } });
   c.on(WebcastEvent.GIFT, d => {
     try {
@@ -403,6 +427,7 @@ ipcMain.handle('scores', (e, a) => {
 });
 ipcMain.handle('simulate', (e, a) => {
   const u = fakeUser(a.name);
+  if (a.type === 'join') return handleJoin(u);
   if (a.type === 'comment') { const p = a.province ? byName[a.province] : pick(PROVINCES); handleComment(u, a.text || pick(['', 'em ở ', 'chào live, ']) + p.name + pick(['', ' nè', ' ơi', ' điểm danh'])); }
   if (a.type === 'gift') {
     if (a.province) { users[u.uniqueId] = { p: a.province, t: Date.now() }; }
@@ -452,6 +477,19 @@ export function start() {
   if (process.env.VNLIVE_SELFTEST) selfTest(process.env.VNLIVE_SELFTEST);
 }
 async function selfTest(dir) {
+  const shot = async (w, n) => { try { const img = await w.webContents.capturePage(); fs.writeFileSync(path.join(dir, n + '.png'), img.toPNG()); } catch (e) { console.log('shot fail', e.message); } };
+  if (process.env.VNLIVE_JOINTEST) {
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    await wait(8000);
+    const old = fakeUser('Lan Chi'); users[old.uniqueId] = { p: 'Huế', t: Date.now() };
+    handleJoin(fakeUser('Minh Anh 98')); await wait(900);
+    await shot(stageWin, 'j1');
+    for (const n of ['Tuấn', 'Hoa', 'Bảo']) handleJoin(fakeUser(n)); handleJoin(old);
+    await wait(500); await shot(stageWin, 'j2');
+    await wait(5000); await shot(stageWin, 'j3');
+    console.log('JOIN logs', logs.slice(-4).join(' | '), 'ttsq', tts.q.length);
+    return app.quit();
+  }
   if (process.env.VNLIVE_SYNCTEST) {
     const wait = ms => new Promise(r => setTimeout(r, ms));
     await wait(8000);
@@ -462,7 +500,6 @@ async function selfTest(dir) {
     return app.quit();
   }
   const wait = ms => new Promise(r => setTimeout(r, ms));
-  const shot = async (w, n) => { try { const img = await w.webContents.capturePage(); fs.writeFileSync(path.join(dir, n + '.png'), img.toPNG()); } catch (e) { console.log('shot fail', e.message); } };
   await wait(9000);
   handleComment(fakeUser('Minh Anh'), 'em ở Đà Lạt nè');
   await wait(2600); await shot(stageWin, 'st_comment');
