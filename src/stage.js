@@ -256,7 +256,7 @@ function play(ev) {
   else if (ev.kind === 'story') {
     dur = 1500;
     const P = prov[ev.province];
-    if (P) { highlight(ev.province, true); P.label.inner.classList.remove('hot'); const v = viewOf(P.anchor, Math.max(P.dist * 2.6, 70)); flyTo(v.t, v.p, 2200); } else goHome(2000);
+    if (P) { highlight(ev.province, true); const v = viewOf(P.anchor, Math.max(P.dist * 2.6, 70)); flyTo(v.t, v.p, 2200); } else goHome(2000);
   }
   else {
     const P = prov[ev.province]; highlight(ev.province, true);
@@ -453,13 +453,17 @@ renderTiers();
 
 // ── vòng lặp ──
 $('warn').remove();
-const clock = new THREE.Clock(); let lblFar = null;
+const clock = new THREE.Clock(); let lblFar = null, lblScale = 0;
 renderer.setAnimationLoop(now => {
   const t = clock.getElapsedTime();
   if (fl) { const k = Math.min(1, (now - fl.t0) / fl.dur), e = ease(k); camT.lerpVectors(fl.ft, fl.tt, e); camera.position.lerpVectors(fl.fp, fl.tp, e); if (k >= 1) fl = null; }
   else if (atHome) { camera.position.set(HOME.p.x + Math.sin(t * 0.12) * 14, HOME.p.y, HOME.p.z + Math.cos(t * 0.09) * 6); }
   camera.lookAt(camT);
-  const far = camera.position.distanceTo(camT) > 170; if (far !== lblFar) { lblFar = far; $('lbl').classList.toggle('far', far); }
+  const dist = camera.position.distanceTo(camT);
+  const far = dist > 170; if (far !== lblFar) { lblFar = far; $('lbl').classList.toggle('far', far); }
+  // zoom càng gần thì tên tỉnh + điểm càng to (toàn cảnh giữ cỡ cũ)
+  const ls = THREE.MathUtils.clamp(150 / dist, 1, 2.6) * (cfg.labelScale || 1);
+  if (Math.abs(ls - lblScale) > 0.02) { lblScale = ls; $('lbl').style.setProperty('--ls', ls.toFixed(2)); }
   for (const n in prov) { const P = prov[n]; if (P.hl) P.mesh.material.emissiveIntensity = 0.11 + 0.08 * Math.sin((now - P.hl) / 160); }
   for (let i = hangs.length - 1; i >= 0; i--) {
     const h = hangs[i]; const left = (h.end - now) / 1000;

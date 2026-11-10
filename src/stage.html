@@ -51,11 +51,12 @@ html,body{margin:0;height:100%;background:#050e14;overflow:hidden;font-family:va
 .tiers b{color:var(--gold);white-space:nowrap;margin-left:10px} .tiers small{font-size:19px;color:var(--ink-2);font-weight:500;margin-left:10px}
 
 /* map labels */
-.pl{transform-origin:50% 50%;font-size:19px;font-weight:700;color:#fff;text-shadow:0 0 4px #000,0 0 3px #000,0 0 2px #000;white-space:nowrap;display:flex;gap:6px;align-items:center;transition:transform .3s}
-.pl .s{background:var(--gold);color:#3a2300;border-radius:999px;padding:1px 9px;font-size:16px;font-weight:800;text-shadow:none;font-variant-numeric:tabular-nums}
-.pl.hot{opacity:0}
+.pl{transform-origin:50% 50%;font-size:calc(19px * var(--ls, 1));font-weight:700;color:#fff;text-shadow:0 0 4px #000,0 0 3px #000,0 0 2px #000;white-space:nowrap;display:flex;gap:6px;align-items:center;transition:transform .3s}
+.pl .s{background:var(--gold);color:#3a2300;border-radius:999px;padding:.05em .5em;font-size:.86em;font-weight:800;text-shadow:none;font-variant-numeric:tabular-nums}
+/* tỉnh đang được zoom: tên + điểm to, nằm ngay dưới avatar */
+.pl.hot{transform:translateY(calc(24px * var(--ls, 1))) scale(1.2);background:rgba(6,22,32,.82);border:2px solid var(--gold);border-radius:14px;padding:.15em .55em;text-shadow:none;z-index:2}
 .far .small .n{display:none}
-.plc{font-size:20px;font-style:italic;font-weight:700;color:#ffd6cf;text-shadow:0 0 4px #000,0 0 3px #000;white-space:nowrap;text-align:center}
+.plc{font-size:calc(20px * min(var(--ls, 1), 1.8));font-style:italic;font-weight:700;color:#ffd6cf;text-shadow:0 0 4px #000,0 0 3px #000;white-space:nowrap;text-align:center}
 .plc small{display:block;font-size:14px;font-style:normal;color:var(--ink-2)}
 .seaL{font-size:26px;font-weight:800;letter-spacing:.4em;color:rgba(180,215,230,.35);white-space:nowrap}
 

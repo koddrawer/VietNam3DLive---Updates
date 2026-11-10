@@ -34,7 +34,7 @@ $('windowScale').onchange = e => set({ windowScale: +e.target.value });
 $('ttsVolume').oninput = e => { $('volv').textContent = Math.round(e.target.value * 100) + '%'; };
 $('ttsVolume').onchange = e => set({ ttsVolume: +e.target.value });
 $('voice').onchange = e => set({ voice: e.target.value });
-const SLIDE = ['bgmVolume', 'bgmDuck', 'sfxVolume'];
+const SLIDE = ['bgmVolume', 'bgmDuck', 'sfxVolume', 'labelScale'];
 for (const k of SLIDE) { $(k).oninput = e => { $(k + 'v').textContent = Math.round(e.target.value * 100) + '%'; }; $(k).onchange = e => set({ [k]: +e.target.value }); }
 function renderBgm() {
   const files = cfg.bgmFiles || [];

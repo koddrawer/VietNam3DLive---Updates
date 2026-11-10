@@ -10,7 +10,7 @@ const CTX = globalThis.__vnlive;
 const { TikTokLiveConnection, WebcastEvent, ControlEvent } = CTX.tiktok;
 const ROOT = CTX.ROOT;            // thư mục gốc gói cài (asar)
 const res = rel => CTX.resolve(rel); // file thực tế: bản cập nhật nếu có, không thì bản gốc
-export const CORE_VERSION = '1.2.2';
+export const CORE_VERSION = '1.2.3';
 const UD = app.getPath('userData');
 const CFG_FILE = path.join(UD, 'config.json');
 const SCORE_FILE = path.join(UD, 'scores.json');
@@ -28,6 +28,7 @@ const DEFAULTS = {
   vieneuDir: '', vieneuGpu: false, autoStartVieneu: false,
   autoUpdate: true, updateRepo: 'koddrawer/VietNam3DLive---Updates', updateBranch: 'main',
   joinVoice: true, joinBanner: true, joinVoiceGapSec: 8,
+  labelScale: 1,
   storyEnabled: true, storyIdleSec: 45, storyTypes: { dangian: true, ma: true, cuoi: true, ngungon: true },
   bgmEnabled: false, bgmFiles: [], bgmPath: '', bgmVolume: 0.35, bgmDuck: 0.35, bgmShuffle: true,
   sfxEnabled: true, sfxVolume: 0.8, fwSfx: true,

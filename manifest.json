@@ -1,16 +1,16 @@
 {
-  "version": "1.2.2",
+  "version": "1.2.3",
   "minShell": "1.1.2",
-  "notes": "Không bỏ sót người comment khi đông: gộp lời chào, nhận diện tỉnh chính xác hơn",
+  "notes": "Tên tỉnh và điểm to hơn khi zoom",
   "files": {
-    "core.mjs": "55122c738ee90598e041b4d36e75994cfd3a067c9f9892314c9c9d8008a2710a",
+    "core.mjs": "059c8c40754a9d64ed4dad482542963eb21553b1f5efb4348933a4c2a2aec9b7",
     "preload.cjs": "29bb4a931981176f1c2188bb46eff380bea0531468f7ae1e89f7043c694f51db",
     "assets/greetings.json": "fc15b214a517807111e0449d444c47efa73dd52f15ef95b4446e7bf1e8e96238",
     "assets/stories.json": "ae188810f78c8909fae125637c4a1507896a790cff42d6137b5785121fc71590",
-    "src/panel.html": "7e842c1e3119187fe370c457647e6ede311504de605fa40802365c1ab83a24a5",
-    "src/panel.js": "11795d12f2e92abc15d877156a825530e51b44f0135691f8545d16a482873ad6",
+    "src/panel.html": "784306025aa51c8fa9e134b876e6e097c977f8c84c86cb58dba95fbf0984d3a8",
+    "src/panel.js": "81d807ba54a87bd7cb157497a2bb0e87f17187991fc9f130181b0fad059c6768",
     "src/provinces.mjs": "61afc1102d208410bc0fd9f71943837370c587d2e972a9795cb69ed2308d4490",
-    "src/stage.html": "a49f25e7839fa9fca9c38be57d5771b786ecfb4dbc97de59ee90b255b11da1a2",
-    "src/stage.js": "78abe6d14eb2335ffdac428823c8a66fcd2121d62d0f905d7fc91ea497a5ffcd"
+    "src/stage.html": "492c6869bb959b55ce0f398ee18421d3cd88a58c04ddc47fadca0643a662967f",
+    "src/stage.js": "489b8ffc8a641108f7cc6cafe048f8d16b1dd07d90879d715891931e136d6f68"
   }
 }
