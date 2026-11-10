@@ -21,10 +21,12 @@ function fill() {
   $('ttsVolume').value = cfg.ttsVolume; $('volv').textContent = Math.round(cfg.ttsVolume * 100) + '%';
   for (const k of SLIDE) { $(k).value = cfg[k]; $(k + 'v').textContent = Math.round(cfg[k] * 100) + '%'; }
   setVoices(null); renderTiers(); renderBgm();
+  for (const k of ['joinLabel', 'joinTicker', 'joinSub', 'joinSubBack']) $(k).value = cfg[k] ?? '';
+  $('joinBanner2').checked = cfg.joinBanner !== false; $('joinVoice2').checked = cfg.joinVoice !== false;
   for (const el of document.querySelectorAll('#storyTypes input')) el.checked = (cfg.storyTypes || {})[el.dataset.t] !== false;
 }
 for (const k of TEXT) $(k).addEventListener('change', e => set({ [k]: e.target.value.trim() }));
-for (const k of CHECK) $(k).addEventListener('change', e => set({ [k]: e.target.checked }));
+for (const k of CHECK) $(k).addEventListener('change', e => { set({ [k]: e.target.checked }); if ($(k + '2')) $(k + '2').checked = e.target.checked; });
 for (const k of NUM) $(k).addEventListener('change', e => set({ [k]: Math.max(0, +e.target.value || 0) }));
 $('resolution').onchange = e => set({ resolution: e.target.value });
 $('windowScale').oninput = e => { $('wsv').textContent = e.target.value + '%'; };
@@ -176,6 +178,20 @@ $('openStory').onclick = () => api.invoke('stories', 'open');
 $('reloadStory').onclick = () => api.invoke('stories', 'reload').then(showStoryCount);
 $('restoreStory').onclick = () => api.invoke('stories', 'restore').then(showStoryCount);
 api.invoke('stories', 'count').then(showStoryCount);
+// ── chào người mới ──
+for (const k of ['joinLabel', 'joinTicker', 'joinSub', 'joinSubBack']) $(k).addEventListener('change', e => set({ [k]: e.target.value === '' ? undefined : e.target.value }));
+for (const [a, k] of [['joinBanner2', 'joinBanner'], ['joinVoice2', 'joinVoice']]) $(a).addEventListener('change', e => { set({ [k]: e.target.checked }); $(k).checked = e.target.checked; });
+async function loadJoin() {
+  const g = await api.invoke('greet-edit', { get: true });
+  $('joinLines').value = (g.join || []).join('\n'); $('joinBackLines').value = (g.join_back || []).join('\n');
+}
+$('saveJoin').onclick = async () => {
+  const lines = id => $(id).value.split('\n').map(x => x.trim()).filter(Boolean);
+  await api.invoke('greet-edit', { set: { join: lines('joinLines'), join_back: lines('joinBackLines') } });
+  $('joinMsg').textContent = 'Đã lưu ✓'; setTimeout(() => $('joinMsg').textContent = '', 2000);
+};
+$('testJoin').onclick = () => api.invoke('simulate', { type: 'join' });
+loadJoin();
 $('openGreet').onclick = () => api.invoke('greetings', 'open');
 $('reloadGreet').onclick = () => api.invoke('greetings', 'reload');
 $('restoreGreet').onclick = () => api.invoke('greetings', 'restore');

@@ -393,10 +393,11 @@ on('scores', s => renderBoard(s.list, s.changed || []));
 on('chat', pushChat);
 
 // ── chào người mới vào live ──
+const jt = (t, d) => String(t).replace(/\{ten\}/g, d.name).replace(/\{tinh\}/g, d.province || '');
 let joinQ = [], joinBusy = false;
 on('join', d => {
   const t = $('ticker'); const div = document.createElement('div'); div.className = 'jn';
-  div.innerHTML = `${imgTag(d.avatar)}<b>${esc(d.name)}</b><span>vừa vào live 👋</span>${d.province ? `<i>${esc(d.province)}</i>` : ''}`;
+  div.innerHTML = `${imgTag(d.avatar)}<b>${esc(d.name)}</b><span>${esc(jt(cfg.joinTicker ?? 'vừa vào live 👋', d))}</span>${d.province ? `<i>${esc(d.province)}</i>` : ''}`;
   t.appendChild(div); while (t.children.length > 5) t.firstChild.remove();
   joinQ.push(d); if (joinQ.length > 4) joinQ.splice(0, joinQ.length - 4);
   showJoin();
@@ -406,7 +407,8 @@ function showJoin() {
   const d = joinQ.shift(); joinBusy = true;
   const el = $('welcome');
   const more = joinQ.length ? `<em>+${joinQ.length} người nữa</em>` : '';
-  el.innerHTML = `${imgTag(d.avatar)}<div><small>CHÀO MỪNG</small><b>${esc(d.name)}</b>${d.province ? `<span>người ${esc(d.province)} quay lại</span>` : '<span>Comment tên tỉnh để ghi điểm!</span>'}</div>${more}`;
+  const sub = d.province ? (cfg.joinSubBack ?? 'người {tinh} quay lại') : (cfg.joinSub ?? 'Comment tên tỉnh để ghi điểm!');
+  el.innerHTML = `${imgTag(d.avatar)}<div><small>${esc(jt(cfg.joinLabel ?? 'CHÀO MỪNG', d))}</small><b>${esc(d.name)}</b>${sub.trim() ? `<span>${esc(jt(sub, d))}</span>` : ''}</div>${more}`;
   el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
   const hold = joinQ.length ? 1800 : 3200;
   setTimeout(() => { el.classList.remove('on'); setTimeout(() => { joinBusy = false; showJoin(); }, 350); }, hold);

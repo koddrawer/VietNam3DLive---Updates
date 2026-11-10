@@ -25,6 +25,7 @@ h2{margin:0;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:v
 label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--ink2);font-weight:600}
 input[type=text],input[type=password],input[type=number],select{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:7px 9px;font:inherit;font-size:13.5px;width:100%;min-width:0}
 input[type=range]{width:100%;accent-color:var(--gold)}
+textarea{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:7px 9px;font:inherit;font-size:13.5px;width:100%;resize:vertical}
 .ck{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer}
 button{background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:7px 12px;font:600 13px var(--f);cursor:pointer;white-space:nowrap}
 button:hover{border-color:var(--gold)}
@@ -212,6 +213,24 @@ td input,td select{padding:4px 6px}
     </div>
     <div class="r"><button id="checkUpd">Kiểm tra cập nhật</button><button class="pri" id="restartUpd" hidden>Khởi động lại để dùng bản mới</button></div>
     <p class="note" id="updMsg"></p>
+  </section>
+
+  <section>
+    <h2>Chào người mới vào live</h2>
+    <div class="r">
+      <label class="ck"><input type="checkbox" id="joinBanner2"> Hiện chữ chào</label>
+      <label class="ck"><input type="checkbox" id="joinVoice2"> Đọc lời chào</label>
+    </div>
+    <div class="grid2">
+      <label class="f">Dòng nhỏ phía trên tên<input type="text" id="joinLabel" placeholder="CHÀO MỪNG"></label>
+      <label class="f">Chữ trong khung chat<input type="text" id="joinTicker" placeholder="vừa vào live 👋"></label>
+      <label class="f">Dòng dưới tên — người mới<input type="text" id="joinSub" placeholder="Comment tên tỉnh để ghi điểm!"></label>
+      <label class="f">Dòng dưới tên — người cũ quay lại<input type="text" id="joinSubBack" placeholder="người {tinh} quay lại"></label>
+    </div>
+    <label class="f">Lời chào người mới (mỗi dòng 1 câu, app chọn ngẫu nhiên)<textarea id="joinLines" rows="5"></textarea></label>
+    <label class="f">Lời chào người cũ quay lại (đã từng comment tên tỉnh)<textarea id="joinBackLines" rows="3"></textarea></label>
+    <div class="r"><button class="pri" id="saveJoin">Lưu lời chào</button><button id="testJoin">Thử 1 người mới vào</button><span class="note" id="joinMsg"></span></div>
+    <p class="note">Dùng {ten} cho tên người xem, {tinh} cho tỉnh của họ. Để trống dòng chữ thì app dùng chữ mặc định (chữ mờ trong ô); gõ một dấu cách để ẩn dòng đó.</p>
   </section>
 
   <section>

@@ -10,7 +10,7 @@ const CTX = globalThis.__vnlive;
 const { TikTokLiveConnection, WebcastEvent, ControlEvent } = CTX.tiktok;
 const ROOT = CTX.ROOT;            // thư mục gốc gói cài (asar)
 const res = rel => CTX.resolve(rel); // file thực tế: bản cập nhật nếu có, không thì bản gốc
-export const CORE_VERSION = '1.2.0';
+export const CORE_VERSION = '1.2.1';
 const UD = app.getPath('userData');
 const CFG_FILE = path.join(UD, 'config.json');
 const SCORE_FILE = path.join(UD, 'scores.json');
@@ -488,6 +488,11 @@ ipcMain.handle('tts', async (e, a) => {
 ipcMain.on('tts-done', () => tts.done());
 ipcMain.on('tts-cancel', (e, id) => tts.cancel(id));
 ipcMain.on('story-idle', () => tellStory(false));
+ipcMain.handle('greet-edit', (e, a) => {
+  greetings.generic ||= {};
+  if (a.set) { for (const k of ['join', 'join_back']) if (Array.isArray(a.set[k])) greetings.generic[k] = a.set[k]; writeJSON(GREET_FILE, greetings); log('Đã lưu lời chào người mới'); }
+  return { join: greetings.generic.join || [], join_back: greetings.generic.join_back || [] };
+});
 ipcMain.handle('stories', (e, a) => {
   if (a === 'now') return tellStory(true);
   if (a === 'open') return shell.openPath(STORY_FILE);

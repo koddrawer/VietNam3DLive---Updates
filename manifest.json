@@ -1,16 +1,16 @@
 {
-  "version": "1.2.0",
+  "version": "1.2.1",
   "minShell": "1.1.2",
-  "notes": "Kể chuyện dân gian, truyện ma, truyện cười, ngụ ngôn khi live vắng",
+  "notes": "Tùy chỉnh lời chào và chữ chào người mới vào",
   "files": {
-    "core.mjs": "37c40448e81d2c82393342dfa7ee318083b452209998acba31e73949f7ce9844",
+    "core.mjs": "3054ae80582e63e623ad53e613441b6014b222571feba7a76165aa8c96d765a4",
     "preload.cjs": "29bb4a931981176f1c2188bb46eff380bea0531468f7ae1e89f7043c694f51db",
     "assets/greetings.json": "e00120f91a221e0a1cdc5c111784ea141eebf96f9f4f1fa4888201e7cf605ef2",
     "assets/stories.json": "ae188810f78c8909fae125637c4a1507896a790cff42d6137b5785121fc71590",
-    "src/panel.html": "955b576cc7bb0521f457f4213a9d53f5f830485d94a209a3b220e99d4ba79d1c",
-    "src/panel.js": "d03d60d9498f180393631f1e4415172dd9f0db77f4999774314776c9796bc2d5",
+    "src/panel.html": "7e842c1e3119187fe370c457647e6ede311504de605fa40802365c1ab83a24a5",
+    "src/panel.js": "11795d12f2e92abc15d877156a825530e51b44f0135691f8545d16a482873ad6",
     "src/provinces.mjs": "65d16ce0264d442a59bbb34f3512d33426d0951f1ccbcd5d030584ce8ce4aa58",
     "src/stage.html": "bbb7b1f85ddc24741353c06e7442474df66679ef6e5e0e108f821b561eea7d4f",
-    "src/stage.js": "8b52240ddb7243d4f2355df855979b160c3050115104e7712764468872f37681"
+    "src/stage.js": "f190cc87ded5dbf1cdfeb78002ded10dea53f4d6480edc491e529cfce61a6fc5"
   }
 }
