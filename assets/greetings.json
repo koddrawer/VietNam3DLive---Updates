@@ -1,5 +1,5 @@
 {
-  "_huong_dan": "Sửa thoải mái rồi bấm 'Nạp lại lời chào'. {ten}=tên người xem, {tinh}=tên tỉnh, {xu}=số xu, {diem}=điểm được cộng, {tong}=tổng điểm tỉnh. greet=chào khi comment; thanks=cảm ơn khi donate; cheer=chúc mừng (chỉ đọc khi quà treo avatar/pháo hoa). Câu donate = thanks + 1 câu theo bậc (generic.tier). join=chào người mới vào live; join_back=chào người cũ quay lại (đã từng comment tên tỉnh). group/group_more=chào gộp khi nhiều người comment cùng lúc ({ds}=danh sách tên, {them}=số người còn lại).",
+  "_huong_dan": "Sửa thoải mái rồi bấm 'Nạp lại lời chào'. {ten}=tên người xem, {tinh}=tên tỉnh, {xu}=số xu, {diem}=điểm được cộng, {tong}=tổng điểm tỉnh. greet=chào khi comment; thanks=cảm ơn khi donate; cheer=chúc mừng (chỉ đọc khi quà treo avatar/pháo hoa). Câu donate = thanks + 1 câu theo bậc (generic.tier). join=chào người mới vào live; join_back=chào người cũ quay lại (đã từng comment tên tỉnh). group/group_more=chào gộp khi nhiều người comment cùng lúc ({ds}=danh sách tên, {them}=số người còn lại). world=câu tiếng Anh cho chế độ Thế giới.",
   "generic": {
     "greet": [
       "Chào {ten} đến từ {tinh}, cảm ơn bạn đã ghé live nha!",
@@ -667,5 +667,51 @@
       ]
     }
   },
-  "_version": 4
+  "_version": 5,
+  "world": {
+    "_huong_dan": "Câu tiếng Anh cho người xem nước ngoài ở chế độ Thế giới. {hello}=lời chào bản xứ, {ten}=tên, {nuoc}=tên nước tiếng Anh, {diem}=điểm, {xu}=số xu, {tong}=tổng điểm nước đó.",
+    "greet": [
+      "{hello} {ten}! Welcome from {nuoc}!",
+      "{hello}! Thanks for joining, {ten} from {nuoc}!",
+      "Hi {ten}! {nuoc} just got a point!",
+      "{hello} {ten}! Great to have {nuoc} here!",
+      "Welcome {ten}! {nuoc} is now on the map!"
+    ],
+    "thanks": [
+      "Thank you so much, {ten}!",
+      "Wow, thank you {ten}!",
+      "Thanks a lot, {ten}!"
+    ],
+    "tier": {
+      "zoom": [
+        "{nuoc} gets {diem} points!",
+        "Plus {diem} points for {nuoc}!"
+      ],
+      "glow": [
+        "{nuoc} is shining with {diem} points!",
+        "{diem} points, {nuoc} lights up!"
+      ],
+      "hang": [
+        "Your photo is up on {nuoc}, plus {diem} points!",
+        "{nuoc} gets {diem} points!"
+      ],
+      "mega": [
+        "Fireworks for {nuoc}! Plus {diem} points!",
+        "Amazing! {nuoc} gets {diem} points!"
+      ]
+    },
+    "cheer": [
+      "Go {nuoc}!",
+      "{nuoc} now has {tong} points!"
+    ],
+    "join_back": [
+      "Welcome back {ten} from {nuoc}!"
+    ],
+    "group": [
+      "Hello {ds}! Thanks for joining!"
+    ],
+    "group_more": [
+      "Hello {ds} and {them} more friends!"
+    ]
+  }
 }

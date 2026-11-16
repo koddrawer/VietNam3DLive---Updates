@@ -1,16 +1,20 @@
 {
-  "version": "1.2.4",
+  "version": "1.3.0",
   "minShell": "1.1.2",
-  "notes": "Thêm bảng Top người chơi",
+  "notes": "Thêm bản đồ Thế giới (chuyển qua lại với bản đồ Việt Nam)",
   "files": {
-    "core.mjs": "bc819b1266e5673ad7a0a2560b44868541faf03385be1d6e14094a01ad80baa5",
+    "core.mjs": "c10671ae3180325f024b0770fd1bfa10ac4d3748d29973860af27137c784a7b6",
     "preload.cjs": "29bb4a931981176f1c2188bb46eff380bea0531468f7ae1e89f7043c694f51db",
-    "assets/greetings.json": "fc15b214a517807111e0449d444c47efa73dd52f15ef95b4446e7bf1e8e96238",
+    "assets/greetings.json": "7e4ff4e563baa3992a4a604f8066d76f60224f8f17f36cc42198db903134c6dc",
     "assets/stories.json": "ae188810f78c8909fae125637c4a1507896a790cff42d6137b5785121fc71590",
-    "src/panel.html": "7a9e823359902854f229addb054a21d39a4235ef70b7f7ce176722ceaa6a4495",
-    "src/panel.js": "56facea47f5ecaf35f50d0293e5b4c75c9ddc790070af8f35f5a5a642fa1f8ae",
-    "src/provinces.mjs": "61afc1102d208410bc0fd9f71943837370c587d2e972a9795cb69ed2308d4490",
-    "src/stage.html": "ca23eb44a5e8d4a0ca8a3abd9e9131c854318c72c5ff5291070eb10bc780a553",
-    "src/stage.js": "bce21fd85816ad6edf398e99e2ab897a976b973831085384085b7a34af06b125"
+    "assets/model/world.glb": "9dbded88251add5d851e44ed7e4c9ef1331a8c51b11c7058a5466f745169f21d",
+    "assets/model/world.json": "eb1102fdc4250e3e67a5b50f6eb286e5bcf85b0b2707b5ba252563adc4fe0897",
+    "assets/model/countries.json": "04f406d64c672046934b86762f35db09026bd9f6629e23be3b37a5b90d6e89dc",
+    "src/panel.html": "032c89ad054c4bcf8e654d34ff376bfbd41e9705e0e1a4d06c3b509d5ae2c1a4",
+    "src/panel.js": "3a1ddc0e954899a61bd38b2d6d6069cbe12154b7bef9e300197f7e7dc37b7aed",
+    "src/provinces.mjs": "d1235273436ca52d4254f8ce81b4fc5065c4ae167c4116eebc8b17ff4e3324c6",
+    "src/stage.html": "3c4412bfbf00dea093a7b140b31a82f16101fa60410b0a9e7efb76269402c292",
+    "src/stage.js": "328b456cd71bd2a42f8e61bc27bca8b53e3c7fbc06d1622a70225379a5a1760a",
+    "src/world.mjs": "5ce8af6e47b9459638875d2d34f38181f3eef8465e856d9b7809d733b272ae77"
   }
 }

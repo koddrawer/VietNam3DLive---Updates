@@ -6,6 +6,9 @@ const EFFECTS = { zoom: 'Zoom cận avatar', glow: 'Avatar + comment tỏa sáng
 let cfg = {};
 
 const init = await api.invoke('init');
+const MODE = init.mode || 'vn';
+// tiêu đề/dòng phụ lưu riêng cho từng bản đồ
+const keyOf = k => (MODE === 'world' && (k === 'title' || k === 'subtitle') ? k + 'World' : k);
 cfg = init.cfg;
 
 // ── fields bound to config ──
@@ -14,7 +17,7 @@ const CHECK = ['autoReconnect', 'alwaysOnTop', 'ttsEnabled', 'voiceComments', 'f
 const NUM = ['pointCooldownSec', 'showCooldownSec', 'commentHoldSec', 'idleHomeSec', 'joinVoiceGapSec', 'storyIdleSec', 'playerBoardCount'];
 const set = patch => api.invoke('set-config', patch).then(c => { cfg = c; });
 function fill() {
-  for (const k of TEXT) $(k).value = cfg[k] ?? '';
+  for (const k of TEXT) $(k).value = cfg[keyOf(k)] ?? '';
   for (const k of CHECK) $(k).checked = ['showTierBoard', 'joinVoice', 'joinBanner', 'storyEnabled', 'showPlayerBoard'].includes(k) ? cfg[k] !== false : !!cfg[k];
   for (const k of NUM) $(k).value = cfg[k];
   $('resolution').value = cfg.resolution; $('windowScale').value = cfg.windowScale; $('wsv').textContent = cfg.windowScale + '%';
@@ -25,7 +28,7 @@ function fill() {
   $('joinBanner2').checked = cfg.joinBanner !== false; $('joinVoice2').checked = cfg.joinVoice !== false;
   for (const el of document.querySelectorAll('#storyTypes input')) el.checked = (cfg.storyTypes || {})[el.dataset.t] !== false;
 }
-for (const k of TEXT) $(k).addEventListener('change', e => set({ [k]: e.target.value.trim() }));
+for (const k of TEXT) $(k).addEventListener('change', e => set({ [keyOf(k)]: e.target.value.trim() }));
 for (const k of CHECK) $(k).addEventListener('change', e => { set({ [k]: e.target.checked }); if ($(k + '2')) $(k + '2').checked = e.target.checked; });
 for (const k of NUM) $(k).addEventListener('change', e => set({ [k]: Math.max(0, +e.target.value || 0) }));
 $('resolution').onchange = e => set({ resolution: e.target.value });
@@ -222,6 +225,13 @@ api.on('log', addLog);
 init.logs.forEach(addLog);
 
 fill();
+$('mapMode').value = MODE;
+$('mapMode').onchange = e => { $('modeNote').textContent = 'Đang chuyển bản đồ, app sẽ khởi động lại…'; api.invoke('set-mode', e.target.value); };
+if (MODE === 'world') {
+  $('scoreTitle').textContent = 'Bảng điểm các nước'; $('simLabel').textContent = 'Nước';
+  if (!init.cfg.titleWorld) $('title').placeholder = 'BẢN ĐỒ THẾ GIỚI';
+  if (!init.cfg.subtitleWorld) $('subtitle').placeholder = 'Comment tên nước của bạn để ghi điểm!';
+}
 showUpd(init.update);
 renderScores(init.scores);
 api.invoke('tts', { action: 'health' });

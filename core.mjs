@@ -4,17 +4,25 @@ import path from 'node:path';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { spawn, exec } from 'node:child_process';
-import { PROVINCES, findProvince, byName, norm } from './src/provinces.mjs';
+import { PROVINCES as VN_PROVINCES, findProvince as vnFind, byName as vnByName, norm } from './src/provinces.mjs';
+import { buildWorld, HELLO } from './src/world.mjs';
 
 const CTX = globalThis.__vnlive;
 const { TikTokLiveConnection, WebcastEvent, ControlEvent } = CTX.tiktok;
 const ROOT = CTX.ROOT;            // thư mục gốc gói cài (asar)
 const res = rel => CTX.resolve(rel); // file thực tế: bản cập nhật nếu có, không thì bản gốc
-export const CORE_VERSION = '1.2.4';
+export const CORE_VERSION = '1.3.0';
 const UD = app.getPath('userData');
 const CFG_FILE = path.join(UD, 'config.json');
-const SCORE_FILE = path.join(UD, 'scores.json');
-const USERS_FILE = path.join(UD, 'users.json');
+// chế độ bản đồ: 'vn' (34 tỉnh) hoặc 'world' (thế giới) — đổi chế độ thì app tự khởi động lại
+const MODE = (() => { try { return JSON.parse(fs.readFileSync(CFG_FILE, 'utf8')).mapMode === 'world' ? 'world' : 'vn'; } catch { return 'vn'; } })();
+const WORLD = MODE === 'world' ? buildWorld(JSON.parse(fs.readFileSync(res('assets/model/countries.json'), 'utf8'))) : null;
+const PROVINCES = WORLD ? WORLD.list : VN_PROVINCES;
+const findProvince = WORLD ? WORLD.find : vnFind;
+const byName = WORLD ? WORLD.byName : vnByName;
+const SUF = WORLD ? '_world' : '';
+const SCORE_FILE = path.join(UD, `scores${SUF}.json`);
+const USERS_FILE = path.join(UD, `users${SUF}.json`);
 const GREET_FILE = path.join(UD, 'greetings.json');
 const TTS_CACHE = path.join(UD, 'tts-cache');
 fs.mkdirSync(TTS_CACHE, { recursive: true });
@@ -103,7 +111,7 @@ function createStage() {
   });
   stageWin.setMenu(null);
   stageWin.setAspectRatio(9 / 16);
-  stageWin.loadURL('app://local/src/stage.html');
+  stageWin.loadURL('app://local/src/stage.html' + (WORLD ? '?mode=world' : ''));
   stageWin.on('closed', () => { stageWin = null; toPanel('stage-open', false); });
   toPanel('stage-open', true);
 }
@@ -151,7 +159,7 @@ function standings() {
   return PROVINCES.map(p => ({ name: p.name, id: p.id, score: scores[p.name] || 0 })).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, 'vi'));
 }
 // ── top người chơi ──
-const PLAYERS_FILE = path.join(UD, 'players.json');
+const PLAYERS_FILE = path.join(UD, `players${SUF}.json`);
 let players = readJSON(PLAYERS_FILE, {}); // uid -> { name, avatar, prov, pts }
 let playersT = null; const playerChanged = new Set();
 function addPlayer(u, prov, pts) {
@@ -196,7 +204,10 @@ function sfxFor(t) {
   const name = t.fireworks ? 'fanfare' : t.effect === 'hang' ? 'fanfare' : t.effect === 'glow' ? 'sparkle' : t.coins >= 5 ? 'chime' : 'coin';
   return `../assets/sfx/${name}.wav`;
 }
-function stageCfg() { return { ...cfg, bgmList: bgmList(), version: CTX.version }; }
+function stageCfg() {
+  const t = WORLD ? { title: cfg.titleWorld || 'BẢN ĐỒ THẾ GIỚI', subtitle: cfg.subtitleWorld || 'Comment tên nước của bạn để ghi điểm!', chip: 'THẾ GIỚI' } : {};
+  return { ...cfg, ...t, bgmList: bgmList(), version: CTX.version, mode: MODE };
+}
 
 // ───────────────────────── game logic ─────────────────────────
 const lastPoint = new Map(), lastShow = new Map();
@@ -204,6 +215,7 @@ const pendingGifts = new Map(); // uid -> [{coins, points, tier, giftName, giftI
 let evSeq = 1;
 
 function provVoice(p, kind) {
+  if (WORLD) return []; // chế độ thế giới: câu riêng theo nước xử lý ở dưới
   const P = greetings.provinces?.[p.name] || {};
   return P[kind] || [];
 }
@@ -254,9 +266,20 @@ const greetBuf = {
     if (batch.length === 1) sendSingleGreet(batch[0]); else sendGroupGreet(batch);
   },
 };
+// Lời chào 1 người: tiếng Anh cho nước ngoài; ở chế độ thế giới, người Việt nhắc tên tỉnh thì dùng lời chào của tỉnh đó
+function greetLine(u, p, text) {
+  const ten = ttsName(u.name);
+  if (p.lang === 'en') {
+    const Wg = greetings.world || {};
+    return fill(pick(Wg.greet) || '{hello} {ten} from {nuoc}!', { hello: HELLO[p.a3] || 'Hello', ten, nuoc: p.en, tong: scores[p.name] });
+  }
+  const vp = WORLD ? vnFind(text) : p;
+  const own = vp ? (greetings.provinces?.[vp.name]?.greet || []) : [];
+  const line = Math.random() < 0.75 && own.length ? pick(own) : pick(greetings.generic?.greet);
+  return fill(line, { ten, tinh: vp ? vp.spoken : p.spoken, tong: scores[p.name] });
+}
 function sendSingleGreet({ u, p, text, pts }) {
-  const vars = { ten: ttsName(u.name), tinh: p.spoken, tong: scores[p.name] };
-  const line = Math.random() < 0.75 && provVoice(p, 'greet').length ? pick(provVoice(p, 'greet')) : pick(greetings.generic?.greet);
+  const line = greetLine(u, p, text), vars = {};
   const ttsId = cfg.voiceComments ? tts.say(fill(line, vars), 0, 'show') : null;
   const id = evSeq++; pendingGreet.set(id, Date.now());
   toStage('show', { id, kind: 'comment', prio: 0, user: u, text, province: p.name, provinceId: p.id, points: pts, total: scores[p.name], ttsId });
@@ -266,8 +289,10 @@ function sendGroupGreet(batch) {
   const names = batch.slice(0, MAXN).map(b => ttsName(b.u.name));
   const extra = batch.length - names.length;
   const ds = names.length > 1 && !extra ? names.slice(0, -1).join(', ') + ' và ' + names.at(-1) : names.join(', ');
-  const G = greetings.generic || {};
-  const line = fill(pick(extra > 0 ? G.group_more : G.group) || 'Chào {ds}!', { ds, them: extra });
+  const en = batch.filter(b => b.p.lang === 'en').length > batch.length / 2; // đa số nước ngoài → câu tiếng Anh
+  const G = (en ? greetings.world : greetings.generic) || {};
+  const dsx = en ? ds.replace(/ và /g, ' and ') : ds;
+  const line = fill(pick(extra > 0 ? G.group_more : G.group) || 'Chào {ds}!', { ds: dsx, them: extra });
   const ttsId = cfg.voiceComments ? tts.say(line, 0, 'show') : null;
   const id = evSeq++; pendingGreet.set(id, Date.now());
   toStage('show', { id, kind: 'group', prio: 0, ttsId, extra,
@@ -297,13 +322,14 @@ function tellStory(force) {
   if (!story) { const f = fresh(null, stories.chung); if (f.length) story = pick(f); }
   if (!story) { toldRecent.length = 0; return force ? tellStory(false) : false; }
   toldRecent.push(key(prov, story)); if (toldRecent.length > 40) toldRecent.shift();
-  const P = prov ? byName[prov] : null;
-  const vars = { ten_truyen: story.title, tinh: P?.spoken || '' };
+  const P0 = prov ? vnByName[prov] : null;           // tỉnh của truyện (luôn là tỉnh Việt Nam)
+  const P = WORLD ? (prov ? WORLD.vn : null) : P0;  // chế độ thế giới: camera bay về Việt Nam
+  const vars = { ten_truyen: story.title, tinh: P0?.spoken || '' };
   const intro = fill(pick(prov ? stories.intro : stories.intro_chung) || '', vars);
   const outro = fill(pick(prov ? stories.outro : (stories.outro || []).filter(x => !x.includes('{tinh}'))) || '', vars);
   const lines = [intro, ...splitSentences(story.text), outro].filter(Boolean);
   const voice = cfg.ttsEnabled ? lines.map(l => tts.say(l, -5, 'story')).filter(x => x != null) : [];
-  toStage('show', { id: evSeq++, kind: 'story', prio: -5, province: prov, provinceId: P?.id, title: story.title, type: story.type, lines, voice });
+  toStage('show', { id: evSeq++, kind: 'story', prio: -5, province: P?.name || null, storyProv: prov, provinceId: P?.id, title: story.title, type: story.type, lines, voice });
   log(`📖 Kể chuyện: ${story.title}${prov ? ' (' + prov + ')' : ''}`);
   return true;
 }
@@ -321,8 +347,9 @@ function handleJoin(user) {
   if (!cfg.voiceComments || !cfg.joinVoice || tts.q.length || now - lastJoinVoice < cfg.joinVoiceGapSec * 1000) return;
   lastJoinVoice = now;
   const G = greetings.generic || {};
-  const line = known && G.join_back?.length ? pick(G.join_back) : pick(G.join);
-  if (line) tts.say(fill(line, { ten: ttsName(u.name), tinh: known?.spoken || '' }), -1, 'join');
+  let line = known && G.join_back?.length ? pick(G.join_back) : pick(G.join);
+  if (known?.lang === 'en') line = pick(greetings.world?.join_back) || line;
+  if (line) tts.say(fill(line, { ten: ttsName(u.name), tinh: known?.spoken || '', nuoc: known?.en || '' }), -1, 'join');
 }
 
 function handleGift(user, coins, giftName, giftImg) {
@@ -347,8 +374,14 @@ function applyGift(u, p, g, text, late) {
   const t = g.tier; const key = t.fireworks ? 'mega' : (t.effect || 'zoom');
   const vars = { ten: ttsName(u.name), tinh: p.spoken, xu: g.coins, diem: g.points, tong: scores[p.name] };
   // câu ngắn: cảm ơn theo tỉnh + điểm; chúc mừng chỉ cho quà lớn
-  const parts = [pick(provVoice(p, 'thanks')) || pick(greetings.generic?.thanks), pick(greetings.generic?.tier?.[key])];
-  if (key === 'hang' || key === 'mega') parts.push(pick(provVoice(p, 'cheer')));
+  let parts;
+  if (p.lang === 'en') { // nước ngoài: cảm ơn bằng tiếng Anh
+    const Wg = greetings.world || {}; Object.assign(vars, { nuoc: p.en });
+    parts = [pick(Wg.thanks), pick(Wg.tier?.[key])]; if (key === 'hang' || key === 'mega') parts.push(pick(Wg.cheer));
+  } else {
+    parts = [pick(provVoice(p, 'thanks')) || pick(greetings.generic?.thanks), pick(greetings.generic?.tier?.[key])];
+    if (key === 'hang' || key === 'mega') parts.push(pick(provVoice(p, 'cheer')));
+  }
   const ttsId = tts.say(fill(parts.filter(Boolean).join(' '), vars), 10 + g.coins, 'show');
   toStage('show', { id: evSeq++, kind: 'gift', prio: 10 + g.coins, user: u, text, province: p.name, provinceId: p.id, coins: g.coins, points: g.points, total: scores[p.name], tier: t, giftName: g.giftName, giftImg: g.giftImg, ttsId, sfx: sfxFor(t) });
   log(`🎁 ${u.name} → ${p.name}: ${g.coins} xu = +${g.points} điểm (${key})`);
@@ -513,7 +546,7 @@ function fakeUser(name) {
 }
 
 // ───────────────────────── IPC ─────────────────────────
-ipcMain.handle('init', () => ({ players: topPlayers(10), cfg, update: CTX.updater.info(), scores: standings(), logs, greetings, provinces: PROVINCES.map(p => ({ id: p.id, name: p.name })), version: app.getVersion() }));
+ipcMain.handle('init', () => ({ mode: MODE, players: topPlayers(10), cfg, update: CTX.updater.info(), scores: standings(), logs, greetings, provinces: PROVINCES.map(p => ({ id: p.id, name: p.name })), version: app.getVersion() }));
 ipcMain.handle('set-config', (e, patch) => {
   const prevRes = cfg.resolution + '|' + cfg.windowScale;
   cfg = { ...cfg, ...patch }; saveCfg();
@@ -534,7 +567,7 @@ ipcMain.handle('scores', (e, a) => {
 ipcMain.handle('simulate', (e, a) => {
   const u = fakeUser(a.name);
   if (a.type === 'join') return handleJoin(u);
-  if (a.type === 'comment') { const p = a.province ? byName[a.province] : pick(PROVINCES); handleComment(u, a.text || pick(['', 'em ở ', 'chào live, ']) + p.name + pick(['', ' nè', ' ơi', ' điểm danh'])); }
+  if (a.type === 'comment') { const p = a.province ? byName[a.province] : pick(PROVINCES); handleComment(u, a.text || pick(['', 'em ở ', 'chào live, ']) + (WORLD && p.lang === 'en' ? p.en : WORLD ? 'Việt Nam' : p.name) + pick(['', ' nè', ' ơi', ' điểm danh'])); }
   if (a.type === 'gift') {
     if (a.province) { users[u.uniqueId] = { p: a.province, t: Date.now() }; }
     else if (!a.noProvince) { const p = pick(PROVINCES); users[u.uniqueId] = { p: p.name, t: Date.now() }; }
@@ -554,6 +587,11 @@ ipcMain.handle('tts', async (e, a) => {
 ipcMain.on('tts-done', () => tts.done());
 ipcMain.on('tts-cancel', (e, id) => tts.cancel(id));
 ipcMain.on('story-idle', () => tellStory(false));
+ipcMain.handle('set-mode', (e, m) => {
+  if (m !== 'world' && m !== 'vn') return;
+  cfg.mapMode = m; saveCfg(); writeJSON(SCORE_FILE, scores); writeJSON(PLAYERS_FILE, players);
+  setTimeout(() => { app.relaunch(); app.exit(0); }, 300);
+});
 ipcMain.on('show-done', (e, id) => { if (pendingGreet.delete(id)) greetBuf.flush(); });
 ipcMain.handle('greet-edit', (e, a) => {
   greetings.generic ||= {};
@@ -599,6 +637,20 @@ export function start() {
 }
 async function selfTest(dir) {
   const shot = async (w, n) => { try { const img = await w.webContents.capturePage(); fs.writeFileSync(path.join(dir, n + '.png'), img.toPNG()); } catch (e) { console.log('shot fail', e.message); } };
+  if (process.env.VNLIVE_WORLDTEST) {
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    cfg.storyEnabled = false; cfg.joinVoice = false; await wait(9000);
+    await shot(stageWin, 'w0');
+    const L = await stageWin.webContents.executeJavaScript('window.__log.slice(-3).join("|")');
+    handleComment(fakeUser('John'), 'hello from USA'); await wait(3200); await shot(stageWin, 'w1'); console.log('LOG1 ' + (await stageWin.webContents.executeJavaScript('window.__log.slice(-12).join(" | ")')));
+    handleComment(fakeUser('Minh Anh'), 'em ở Đà Lạt'); await wait(4200); await shot(stageWin, 'w2');
+    const g = fakeUser('Yuki'); handleComment(g, 'Japan'); await wait(300); handleGift(g, 30, 'Quà', ''); await wait(9000); await shot(stageWin, 'w3');
+    for (const [n, t] of [['Kim', 'Hàn Quốc'], ['Somchai', 'Thái Lan'], ['Pierre', 'France'], ['Ana', 'Brazil'], ['Lan', 'Hà Nội']]) handleComment(fakeUser(n), t);
+    await wait(12000); await shot(stageWin, 'w4'); await shot(panelWin, 'wp');
+    const v = await stageWin.webContents.executeJavaScript('(window.__voices||[]).map(x=>x.text).join("\\n")');
+    console.log('WORLD voices\n' + v + '\nscores ' + JSON.stringify(standings().filter(r => r.score).slice(0, 10)));
+    return app.quit();
+  }
   if (process.env.VNLIVE_GROUPTEST) {
     const wait = ms => new Promise(r => setTimeout(r, ms));
     cfg.storyEnabled = false; await wait(7000);

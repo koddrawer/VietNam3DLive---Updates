@@ -44,24 +44,6 @@ export function norm(s) { return fold(tidy(s)).replace(/[^a-z0-9]+/g, ' ').trim(
 const hasMarks = s => /[^\x00-\x7f]/.test(String(s || '').normalize('NFC'));
 
 // Bảng khóa: { plain: chuỗi không dấu, exact: chuỗi có dấu (nếu có), p }
-const TABLE = [];
-for (const p of PROVINCES) {
-  const raw = [p.name, p.name.replace(/^TP\.?\s*/, ''), ...p.alias];
-  const seen = new Set();
-  for (let a of raw) {
-    const plainOnly = a.startsWith('*'); if (plainOnly) a = a.slice(1);   // viết tắt: chỉ so không dấu
-    const exact = plainOnly ? null : tidy(a);
-    const plain = norm(a);
-    for (const [pl, ex] of [[plain, exact], [plain.replace(/ /g, ''), exact ? exact.replace(/ /g, '') : null]]) {
-      if (!pl || (pl.indexOf(' ') < 0 && pl.length < 2)) continue;
-      const k = pl + '|' + (ex || '');
-      if (pl !== plain && pl.length < 5) continue; // biến thể viết liền phải đủ dài
-      if (seen.has(k)) continue; seen.add(k);
-      TABLE.push({ plain: pl, exact: ex && hasMarks(ex) ? ex : null, p });
-    }
-  }
-}
-
 // Tách 1 từ thành (chữ + dấu mũ/móc, thanh điệu) để so: "hoà" = "hòa", "Huế" ≠ "Huệ"
 const TONES = /[\u0300\u0301\u0303\u0309\u0323]/g;
 function split(w) {
@@ -78,11 +60,31 @@ function wordOk(typed, std) {
   return baseOk && toneOk;
 }
 
+export function buildMatcher(list) {
+const TABLE = [];
+for (const p of list) {
+  const raw = [...(p.matchName === false ? [] : [p.name, p.name.replace(/^TP\.?\s*/, '')]), ...(p.alias || [])];
+  const seen = new Set();
+  for (let a of raw) {
+    if (!a || typeof a !== 'string') continue;
+    const plainOnly = a.startsWith('*'); if (plainOnly) a = a.slice(1);   // viết tắt: chỉ so không dấu
+    const exact = plainOnly ? null : tidy(a);
+    const plain = norm(a);
+    for (const [pl, ex] of [[plain, exact], [plain.replace(/ /g, ''), exact ? exact.replace(/ /g, '') : null]]) {
+      if (!pl || (pl.indexOf(' ') < 0 && pl.length < 2)) continue;
+      const k = pl + '|' + (ex || '');
+      if (pl !== plain && pl.length < 5) continue; // biến thể viết liền phải đủ dài
+      if (seen.has(k)) continue; seen.add(k);
+      TABLE.push({ plain: pl, exact: ex && hasMarks(ex) ? ex : null, p });
+    }
+  }
+}
+
 const BYFIRST = new Map();
 for (const e of TABLE) { const f = e.plain.split(' ')[0]; if (!BYFIRST.has(f)) BYFIRST.set(f, []); BYFIRST.get(f).push(e); }
 
-/** Tìm tỉnh được nhắc tới đầu tiên trong comment. Trả về province hoặc null. */
-export function findProvince(text) {
+/** Tìm mục được nhắc tới đầu tiên trong comment. Trả về mục hoặc null. */
+return function find(text) {
   const t = tidy(text);
   if (!t) return null;
   const words = t.split(' ');
@@ -105,7 +107,9 @@ export function findProvince(text) {
     if (best && best.i === i) break;
   }
   return best ? best.p : null;
+};
 }
+export const findProvince = buildMatcher(PROVINCES);
 
 export const byId = Object.fromEntries(PROVINCES.map(p => [p.id, p]));
 export const byName = Object.fromEntries(PROVINCES.map(p => [p.name, p]));

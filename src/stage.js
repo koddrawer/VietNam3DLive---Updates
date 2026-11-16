@@ -30,31 +30,35 @@ function fit() {
 }
 addEventListener('resize', fit); fit();
 
+const MODE = new URLSearchParams(location.search).get('mode') === 'world' ? 'world' : 'vn';
+const WORLD = MODE === 'world';
+let lblLevel = -1, lblDirty = true;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x08202e);
-scene.fog = new THREE.Fog(0x08202e, 420, 900);
-const camera = new THREE.PerspectiveCamera(34, W / H, 0.5, 3000);
+scene.fog = WORLD ? new THREE.Fog(0x08202e, 4800, 9500) : new THREE.Fog(0x08202e, 420, 900);
+const camera = new THREE.PerspectiveCamera(34, W / H, WORLD ? 12 : 0.5, WORLD ? 12000 : 3000);
 scene.add(new THREE.HemisphereLight(0xffffff, 0x3c5560, 1.2));
 const sun = new THREE.DirectionalLight(0xfff1dc, 2.2); sun.position.set(-120, 150, -110); scene.add(sun);
 scene.add(new THREE.AmbientLight(0xffffff, 0.12));
-const sea = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600), new THREE.MeshStandardMaterial({ color: 0x0b3046, roughness: 0.75 }));
+const sea = new THREE.Mesh(WORLD ? new THREE.PlaneGeometry(6000, 3000) : new THREE.PlaneGeometry(1600, 1600), new THREE.MeshStandardMaterial({ color: 0x0b3046, roughness: 0.75 }));
 sea.rotation.x = -Math.PI / 2; sea.position.y = -0.03; scene.add(sea);
 
 // ── tải dữ liệu ──
 const [data, gltf] = await Promise.all([
-  fetch('../assets/model/data.json').then(r => r.json()),
-  new GLTFLoader().loadAsync('../assets/model/vn.glb'),
+  fetch(WORLD ? '../assets/model/world.json' : '../assets/model/data.json').then(r => r.json()),
+  new GLTFLoader().loadAsync(WORLD ? '../assets/model/world.glb' : '../assets/model/vn.glb'),
 ]);
 const { EX, LAND, UNIT } = data;
-const KX = 111.32 * Math.cos(16 * Math.PI / 180) / UNIT, KY = 110.57 / UNIT;
-const ll = (lon, lat) => [(lon - 108) * KX, -(lat - 16) * KY];
+const KX = WORLD ? data.proj.k : 111.32 * Math.cos(16 * Math.PI / 180) / UNIT, KY = WORLD ? data.proj.k : 110.57 / UNIT;
+const ll = WORLD ? (lon, lat) => [lon * KX, -lat * KY] : (lon, lat) => [(lon - 108) * KX, -(lat - 16) * KY];
 const hY = h => LAND + h / 1000 * EX / UNIT;
 
 // lưới kinh vĩ
 {
   const pts = [];
-  for (let lon = 100; lon <= 120; lon += 2) { const a = ll(lon, 4), b = ll(lon, 26); pts.push(a[0], 0, a[1], b[0], 0, b[1]); }
-  for (let lat = 4; lat <= 26; lat += 2) { const a = ll(98, lat), b = ll(122, lat); pts.push(a[0], 0, a[1], b[0], 0, b[1]); }
+  const [lo0, lo1, la0, la1, st] = WORLD ? data.grat : [98, 122, 4, 26, 2];
+  for (let lon = lo0; lon <= lo1; lon += st) { const a = ll(lon, la0), b = ll(lon, la1); pts.push(a[0], 0, a[1], b[0], 0, b[1]); }
+  for (let lat = la0; lat <= la1; lat += st) { const a = ll(lo0, lat), b = ll(lo1, lat); pts.push(a[0], 0, a[1], b[0], 0, b[1]); }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
   scene.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0x5f8da3, transparent: true, opacity: 0.18 })));
 }
@@ -79,8 +83,9 @@ gltf.scene.traverse(o => {
   if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
   o.geometry.computeBoundingBox();
   const s = new THREE.Vector3(); o.geometry.boundingBox.getSize(s);
-  let dist = THREE.MathUtils.clamp(Math.max(s.x, s.z) * 1.25, 16, 42);
+  let dist = WORLD ? THREE.MathUtils.clamp(Math.max(m.size[0], m.size[1] * 0.8) * 1.15, 40, 420) : THREE.MathUtils.clamp(Math.max(s.x, s.z) * 1.25, 16, 42);
   if (m.name === 'Khánh Hòa' || m.name === 'Đà Nẵng') dist = 30;
+  if (WORLD && m.a3 === 'VNM') dist = 190;
   const anchor = new THREE.Vector3(m.label[0], hY(m.label[2]), m.label[1]);
   prov[m.name] = { mesh: o, meta: m, anchor, dist };
 });
@@ -88,14 +93,15 @@ scene.add(gltf.scene);
 
 // ranh giới
 const lineMats = [];
-for (const [ext, w, color] of [[0, 1.6, 0xffffff], [1, 1.3, 0x0a1a24]]) {
+for (const [ext, w, color] of [[0, 1.6, 0xffffff], [1, 1.3, 0x0a1a24], [2, 0.8, 0xfff2d0]]) {
   const arr = [];
   for (const L of data.lines) {
     if (L.e !== ext) continue; const p = L.p;
     for (let i = 0; i + 5 < p.length; i += 3) arr.push(p[i], hY(p[i + 2]) + 0.02, p[i + 1], p[i + 3], hY(p[i + 5]) + 0.02, p[i + 4]);
   }
   const g = new LineSegmentsGeometry(); g.setPositions(arr);
-  const m = new LineMaterial({ color, linewidth: w, transparent: true, opacity: ext ? 0.9 : 0.85 }); m.resolution.set(W, H); lineMats.push(m);
+  if (!arr.length) continue;
+  const m = new LineMaterial({ color, linewidth: w, transparent: true, opacity: ext === 2 ? 0.45 : ext ? 0.9 : 0.85 }); m.resolution.set(W, H); lineMats.push(m);
   scene.add(new LineSegments2(g, m));
 }
 
@@ -106,9 +112,10 @@ for (const name in prov) {
   const o = css2d(`<span class="n">${name}</span><span class="s" hidden>0</span>`, 'pl', P.anchor.clone().add(new THREE.Vector3(0, 0.5, 0)));
   P.label = o; P.scoreEl = o.inner.querySelector('.s');
   if (SMALL.has(name)) o.inner.classList.add('small');
+  if (WORLD) o.inner.dataset.minl = P.meta.minl ?? 5;
 }
 for (const pl of data.places) {
-  const sub = pl.name.startsWith('Quần đảo') ? (pl.prov === 'Đà Nẵng' ? 'TP. Đà Nẵng' : 'Khánh Hòa') : pl.prov;
+  const sub = WORLD ? 'Việt Nam' : pl.name.startsWith('Quần đảo') ? (pl.prov === 'Đà Nẵng' ? 'TP. Đà Nẵng' : 'Khánh Hòa') : pl.prov;
   const dz = pl.name.startsWith('Quần đảo') ? -pl.h / 2 - 3 : 3.2;
   css2d(`${pl.name}<small>${sub}</small>`, 'plc', new THREE.Vector3(pl.c[0] + (pl.name === 'Đảo Phú Quốc' ? -6 : 0), 0.5, pl.c[1] + dz));
   if (pl.name.startsWith('Quần đảo')) {
@@ -119,16 +126,20 @@ for (const pl of data.places) {
     const fl = new THREE.Line(fg, new THREE.LineDashedMaterial({ color: 0xffd34a, dashSize: 1.4, gapSize: 1, transparent: true, opacity: 0.7 })); fl.computeLineDistances(); scene.add(fl);
   }
 }
-{ const p = ll(112.6, 14.2); css2d('BIỂN ĐÔNG', 'seaL', new THREE.Vector3(p[0], 0, p[1])); }
+if (WORLD) for (const [n, x, z] of data.seas) css2d(n, 'seaL', new THREE.Vector3(x, 0, z));
+else { const p = ll(112.6, 14.2); css2d('BIỂN ĐÔNG', 'seaL', new THREE.Vector3(p[0], 0, p[1])); }
 
 // ── camera ──
-const HOME = { t: new THREE.Vector3(10, 0, -19), p: new THREE.Vector3(10, 404, 128) };
+const HOME = WORLD ? { t: new THREE.Vector3(...data.home.t), p: new THREE.Vector3(...data.home.p) } : { t: new THREE.Vector3(10, 0, -19), p: new THREE.Vector3(10, 404, 128) };
 camera.position.copy(HOME.p); camera.lookAt(HOME.t);
 const camT = HOME.t.clone();
 let fl = null, atHome = true;
 const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 function flyTo(target, pos, dur = 1400) { fl = { t0: performance.now(), dur, ft: camT.clone(), fp: camera.position.clone(), tt: target.clone(), tp: pos.clone() }; }
-function goHome(dur = 2200) { atHome = true; flyTo(HOME.t, HOME.p, dur); }
+let homeT0 = performance.now() - Math.asin(0.3) / 0.025 * 1000; // bắt đầu ở châu Á
+function goHome(dur = 2200) { atHome = true; if (WORLD) { const x = camT.x; } flyTo(homeAt(), homePos(), dur); }
+function homeAt() { if (!WORLD) return HOME.t; const dx = Math.sin((performance.now() + 2200 - homeT0) / 1000 * 0.025) * 1250; return new THREE.Vector3(HOME.t.x - 350 + dx, 0, HOME.t.z); }
+function homePos() { const t = homeAt(); return WORLD ? new THREE.Vector3(t.x, HOME.p.y, HOME.p.z) : HOME.p; }
 function viewOf(anchor, dist) { return { t: anchor.clone(), p: new THREE.Vector3(anchor.x + dist * 0.06, anchor.y + dist * 0.95, anchor.z + dist * 0.62) }; }
 
 // ── bảng xếp hạng / bậc donate ──
@@ -140,9 +151,11 @@ function renderTiers() {
 }
 let lastTop = [];
 function renderBoard(list, changed = []) {
-  const top = list.slice(0, 5); const max = Math.max(1, top[0]?.score || 1);
+  const top = (WORLD ? list.filter(r => r.score > 0) : list).slice(0, 5); const max = Math.max(1, top[0]?.score || 1);
   $('rows').innerHTML = top.map((r, i) => `<div class="row${changed.includes(r.name) ? ' flash' : ''}"><span class="rk">${i + 1}</span><span class="nm">${r.name}</span><span class="sc">${r.score.toLocaleString('vi-VN')}</span><span class="bar"><i style="width:${(r.score / max * 100).toFixed(1)}%"></i></span></div>`).join('');
-  for (const r of list) { const P = prov[r.name]; if (!P) continue; P.scoreEl.hidden = !r.score; P.scoreEl.textContent = r.score.toLocaleString('vi-VN'); }
+  if (!top.length) $('rows').innerHTML = '<div class="row" style="grid-template-columns:1fr;font-size:22px;color:var(--ink-2)">Comment tên nước để lên bảng!</div>';
+  lblDirty = true;
+  for (const r of list) { const P = prov[r.name]; if (!P) continue; P.score = r.score; P.scoreEl.hidden = !r.score; P.scoreEl.textContent = r.score.toLocaleString('vi-VN'); }
   lastTop = top;
 }
 
@@ -208,6 +221,7 @@ on('show', ev => {
   for (const id of ev.voice) linked.add(id);
   L('SHOWIN ' + ev.id + ' voice=' + ev.voice.join(','));
   if (ev.kind === 'story') storyAsked = false;
+  if (ev.kind === 'gift' && ev.user?.uid) { const c = queue.find(q => q.kind === 'comment' && q.user?.uid === ev.user.uid); if (c) dropShow(c); } // tặng quà thì bỏ lời chào thường của chính người đó
   queue.push(ev); queue.sort((a, b) => b.prio - a.prio || a.id - b.id);
   if (cur?.kind === 'story' && ev.prio > cur.prio && !cur.abort) abortStory(); // có người tương tác → dừng kể sau câu đang đọc
   // quà được xếp lên đầu hàng chờ, nhưng vẫn để người đang được chào nghe hết câu
@@ -363,9 +377,10 @@ async function playVoice(d) {
   try {
     const buf = await actx.decodeAudioData(d.wav.buffer.slice(d.wav.byteOffset, d.wav.byteOffset + d.wav.byteLength));
     const src = actx.createBufferSource(); src.buffer = buf; const g = actx.createGain(); g.gain.value = d.volume ?? 1;
+    L('DUR ' + d.id + ' ' + buf.duration.toFixed(2) + ' ctx=' + actx.state);
     src.connect(g).connect(actx.destination); src.onended = ttsDone; src.start();
     playing.stop = () => { try { src.stop(); } catch {} };
-  } catch (e) { console.error(e); ttsDone(); }
+  } catch (e) { console.error(e); L('VOICE_ERR ' + d.id + ' ' + (e?.message || e) + ' bytes=' + d.wav?.byteLength); ttsDone(); }
 }
 
 // ── kể chuyện khi rảnh ──
@@ -424,7 +439,7 @@ function bgmTick() { // giảm nhỏ nhạc khi đang đọc
 }
 
 // ── cấu hình / điểm ──
-on('config', c => { cfg = c; $('title').innerHTML = `<span class="star">★</span>${esc(c.title || '')}`; $('subtitle').textContent = c.subtitle || ''; renderTiers(); setupBgm(); renderPlayers(); });
+on('config', c => { cfg = c; $('title').innerHTML = `<span class="star">★</span>${esc(c.title || '')}`; $('subtitle').textContent = c.subtitle || ''; $('chip').textContent = c.chip || (WORLD ? 'THẾ GIỚI' : '34 TỈNH THÀNH'); renderTiers(); setupBgm(); renderPlayers(); });
 on('scores', s => renderBoard(s.list, s.changed || []));
 on('chat', pushChat);
 
@@ -474,12 +489,21 @@ const clock = new THREE.Clock(); let lblFar = null, lblScale = 0;
 renderer.setAnimationLoop(now => {
   const t = clock.getElapsedTime();
   if (fl) { const k = Math.min(1, (now - fl.t0) / fl.dur), e = ease(k); camT.lerpVectors(fl.ft, fl.tt, e); camera.position.lerpVectors(fl.fp, fl.tp, e); if (k >= 1) fl = null; }
-  else if (atHome) { camera.position.set(HOME.p.x + Math.sin(t * 0.12) * 14, HOME.p.y, HOME.p.z + Math.cos(t * 0.09) * 6); }
+  else if (atHome) {
+    if (WORLD) { // toàn cảnh thế giới: lia chậm từ châu Mỹ sang châu Á
+      const dx = Math.sin((now - homeT0) / 1000 * 0.025) * 1250, x0 = HOME.t.x - 350;
+      camT.set(x0 + dx, 0, HOME.t.z); camera.position.set(x0 + dx, HOME.p.y, HOME.p.z);
+    } else camera.position.set(HOME.p.x + Math.sin(t * 0.12) * 14, HOME.p.y, HOME.p.z + Math.cos(t * 0.09) * 6);
+  }
   camera.lookAt(camT);
   const dist = camera.position.distanceTo(camT);
   const far = dist > 170; if (far !== lblFar) { lblFar = far; $('lbl').classList.toggle('far', far); }
+  if (WORLD) { // bản đồ thế giới: xa thì chỉ hiện tên nước lớn + nước đã có điểm
+    const lv = dist > 1100 ? 3 : dist > 650 ? 4 : dist > 350 ? 5 : 99;
+    if (lv !== lblLevel || lblDirty) { lblLevel = lv; lblDirty = false; for (const n in prov) { const P = prov[n]; P.label.inner.classList.toggle('off', !(P.meta.minl <= lv || P.score > 0)); } }
+  }
   // zoom càng gần thì tên tỉnh + điểm càng to (toàn cảnh giữ cỡ cũ)
-  const ls = THREE.MathUtils.clamp(150 / dist, 1, 2.6) * (cfg.labelScale || 1);
+  const ls = THREE.MathUtils.clamp((WORLD ? 700 : 150) / dist, 1, 2.6) * (cfg.labelScale || 1);
   if (Math.abs(ls - lblScale) > 0.02) { lblScale = ls; $('lbl').style.setProperty('--ls', ls.toFixed(2)); }
   for (const n in prov) { const P = prov[n]; if (P.hl) P.mesh.material.emissiveIntensity = 0.11 + 0.08 * Math.sin((now - P.hl) / 160); }
   for (let i = hangs.length - 1; i >= 0; i--) {

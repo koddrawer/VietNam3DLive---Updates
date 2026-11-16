@@ -78,6 +78,10 @@ td input,td select{padding:4px 6px}
   <section>
     <h2>Màn hình live 9:16</h2>
     <div class="r">
+      <label class="f">Bản đồ<select id="mapMode"><option value="vn">Việt Nam — 34 tỉnh thành</option><option value="world">Thế giới — các quốc gia</option></select></label>
+      <span class="note" id="modeNote" style="flex:2">Đổi bản đồ thì app tự khởi động lại. Điểm và top người chơi của mỗi bản đồ được lưu riêng.</span>
+    </div>
+    <div class="r">
       <label class="f">Độ phân giải xuất<select id="resolution"><option value="1080x1920">1080 × 1920 (Full HD)</option><option value="720x1280">720 × 1280 (HD)</option><option value="540x960">540 × 960</option></select></label>
       <label class="f">Kích thước cửa sổ: <span id="wsv">50%</span><input type="range" id="windowScale" min="25" max="100" step="5"></label>
     </div>
@@ -192,7 +196,7 @@ td input,td select{padding:4px 6px}
 
 <div class="col">
   <section>
-    <h2>Bảng điểm 34 tỉnh <span class="r"><button id="clearUsers" title="Quên tỉnh mà người xem đã chọn">Quên tỉnh người xem</button><button class="dan" id="resetScores">Đặt lại điểm</button></span></h2>
+    <h2><span id="scoreTitle">Bảng điểm 34 tỉnh</span> <span class="r"><button id="clearUsers" title="Quên tỉnh mà người xem đã chọn">Quên tỉnh người xem</button><button class="dan" id="resetScores">Đặt lại điểm</button></span></h2>
     <div class="scores" id="scores"></div>
   </section>
 
@@ -210,7 +214,7 @@ td input,td select{padding:4px 6px}
   <section>
     <h2>Thử nghiệm (không cần live)</h2>
     <div class="r">
-      <label class="f">Tỉnh<select id="simProv"><option value="">Ngẫu nhiên</option></select></label>
+      <label class="f"><span id="simLabel">Tỉnh</span><select id="simProv"><option value="">Ngẫu nhiên</option></select></label>
       <button id="simComment">Comment thử</button>
       <button id="simBurst">10 comment liên tiếp</button>
       <button id="simJoin">Người mới vào</button>
