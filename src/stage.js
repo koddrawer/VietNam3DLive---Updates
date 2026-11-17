@@ -17,7 +17,7 @@ const root = $('root');
 let cfg = { commentHoldSec: 4, idleHomeSec: 6, tiers: [], title: 'BẢN ĐỒ VIỆT NAM', subtitle: '' };
 
 // ── renderer ──
-const renderer = new THREE.WebGLRenderer({ canvas: $('gl'), antialias: true });
+const renderer = new THREE.WebGLRenderer({ canvas: $('gl'), antialias: true, logarithmicDepthBuffer: new URLSearchParams(location.search).get('mode') === 'world' });
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 const lr = new CSS2DRenderer({ element: $('lbl') });
 lr.sortObjects = false; // thứ tự lớp cố định theo loại (tránh chữ nhảy/nhấp nháy khi camera chạy)
@@ -377,6 +377,8 @@ function play(ev) {
     const P = prov[ev.province]; highlight(ev.province, true);
     if (ev.kind === 'comment') {
       const v = WORLD ? fitView(mbOf(P)) : viewOf(P.anchor, P.dist); if (WORLD) atHome = false; flyTo(v.t, v.p, WORLD ? 1500 : 1300);
+      const iso = (ev.iso2 || P.meta.iso2 || '').toLowerCase();
+      if (WORLD && iso && iso !== '-99') addOverlay(P, 'flag', `../assets/flags/${iso}.svg`, 4800); // cờ hiện trên nước của người comment
       marker = makeMarker(ev, '');
       dur = Math.max(2000, ((cfg.commentHoldSec || 4) - queue.length * 0.35) * 1000) + 900;
       if (ev.voice.length) dur = Math.min(dur, 2600); // có giọng chào thì chờ đọc xong là chính
@@ -385,7 +387,8 @@ function play(ev) {
       if (WORLD) { // zoom thấy trọn nước + lá cờ hiện trên nước đó
         const v = fitView(mbOf(P)); atHome = false; flyTo(v.t, v.p, 1800);
         const fill = t.effect === 'fill' && ev.user?.avatar;
-        if (ev.iso2) addOverlay(P, 'flag', `../assets/flags/${ev.iso2}.svg`, fill ? 4200 : 7000);
+        const isoG = (ev.iso2 || P.meta.iso2 || '').toLowerCase();
+        if (isoG && isoG !== '-99') addOverlay(P, 'flag', `../assets/flags/${isoG}.svg`, fill ? 4200 : 7000);
         if (t.effect === 'hang') addHang(ev);
         if (fill) api.invoke('img', ev.user.avatar).then(u => setTimeout(() => addOverlay(P, 'avatar', u || ev.user.avatar, (t.secs || 60) * 1000), 3400));
         marker = css2d(`<div class="pts">+${fmt(ev.points)}</div>`, 'mk burst', P.anchor.clone().add(new THREE.Vector3(0, 0.6, 0)));
@@ -622,7 +625,7 @@ renderer.setAnimationLoop(now => {
   }
   camera.lookAt(camT);
   const dist = camera.position.distanceTo(camT);
-  if (WORLD) { scene.fog.near = dist * 1.15; scene.fog.far = dist * 2.4; camera.far = Math.max(12000, dist * 3); camera.updateProjectionMatrix(); }
+  if (WORLD) { scene.fog.near = dist * 1.15; scene.fog.far = dist * 2.4; camera.near = Math.max(2, dist * 0.2); camera.far = Math.max(12000, dist * 3); camera.updateProjectionMatrix(); } // near tăng theo khoảng cách → đủ độ chính xác chiều sâu, bản đồ không nhấp nháy khi zoom xa
   const far = dist > 170; if (far !== lblFar) { lblFar = far; $('lbl').classList.toggle('far', far); }
   if (WORLD) { // bản đồ thế giới: xa thì chỉ hiện tên nước lớn + nước đã có điểm
     const lv = dist > 3000 ? 2 : dist > 1100 ? 3 : dist > 650 ? 4 : dist > 350 ? 5 : 99;

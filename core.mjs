@@ -11,7 +11,7 @@ const CTX = globalThis.__vnlive;
 const { TikTokLiveConnection, WebcastEvent, ControlEvent } = CTX.tiktok;
 const ROOT = CTX.ROOT;            // thư mục gốc gói cài (asar)
 const res = rel => CTX.resolve(rel); // file thực tế: bản cập nhật nếu có, không thì bản gốc
-export const CORE_VERSION = '1.4.3';
+export const CORE_VERSION = '1.4.4';
 const UD = app.getPath('userData');
 const CFG_FILE = path.join(UD, 'config.json');
 // chế độ bản đồ: 'vn' (34 tỉnh) hoặc 'world' (thế giới) — đổi chế độ thì app tự khởi động lại
@@ -36,7 +36,7 @@ const DEFAULTS = {
   vieneuDir: '', vieneuGpu: false, autoStartVieneu: false,
   autoUpdate: true, updateRepo: 'koddrawer/VietNam3DLive---Updates', updateBranch: 'main',
   joinVoice: true, joinBanner: true, joinVoiceGapSec: 8,
-  labelScale: 1, groupGreet: false, voiceEn: 'win:', showPlayerBoard: true, playerBoardTitle: 'TOP NGƯỜI CHƠI', playerBoardCount: 5,
+  labelScale: 1, groupGreet: false, voiceEn: 'win:', googleKey: '', googleRate: 1, showPlayerBoard: true, playerBoardTitle: 'TOP NGƯỜI CHƠI', playerBoardCount: 5,
   storyEnabled: true, storyIdleSec: 45, storyTypes: { dangian: true, ma: true, cuoi: true, ngungon: true },
   bgmEnabled: false, bgmFiles: [], bgmPath: '', bgmVolume: 0.35, bgmDuck: 0.35, bgmShuffle: true,
   sfxEnabled: true, sfxVolume: 0.8, fwSfx: true,
@@ -299,7 +299,7 @@ function sendSingleGreet({ u, p, text, pts }) {
   const line = greetLine(u, p, text), vars = {};
   const ttsId = cfg.voiceComments ? tts.say(fill(line, vars), 0, 'show') : null;
   const id = evSeq++; pendingGreet.set(id, Date.now());
-  toStage('show', { id, kind: 'comment', prio: 0, user: u, text, province: p.name, provinceId: p.id, points: pts, total: scores[p.name], ttsId });
+  toStage('show', { id, kind: 'comment', prio: 0, user: u, text, province: p.name, provinceId: p.id, iso2: p.iso2, points: pts, total: scores[p.name], ttsId });
 }
 function sendGroupGreet(batch) {
   const MAXN = cfg.groupVoiceNames || 8;
@@ -433,7 +433,7 @@ const tts = {
     this.q.sort((a, b) => b.prio - a.prio || a.t - b.t);
     const item = this.q.shift(); this.busy = true;
     // bản đồ thế giới đọc tiếng Anh bằng giọng riêng (giọng VieNeu khác, hoặc giọng tiếng Anh của Windows)
-    const voice = WORLD ? (cfg.voiceEn || 'win:') : cfg.voice;
+    const voice = (WORLD ? (cfg.voiceEn || 'win:') : cfg.voice) || '';
     const lang = WORLD ? 'en-US' : 'vi-VN';
     if (voice.startsWith('win:')) {
       this.inflight++; toStage('tts', { id: item.id, prio: item.prio, kind: item.kind, text: item.text, fallback: true, lang, voiceName: voice.slice(4), volume: cfg.ttsVolume });
@@ -441,11 +441,12 @@ const tts = {
     }
     try {
       const wav = await synth(item.text, voice);
-      this.online = true;
+      if (!/^(google|gcloud):/.test(voice)) this.online = true;
       this.inflight++; toStage('tts', { id: item.id, prio: item.prio, kind: item.kind, text: item.text, wav, volume: cfg.ttsVolume });
     } catch (e) {
-      if (this.online !== false) log('⚠️ VieNeu TTS lỗi: ' + e.message + (cfg.fallbackVoice ? ' → dùng giọng Windows dự phòng' : ''));
-      this.online = false;
+      const g = /^(google|gcloud):/.test(voice);
+      if (g) { if (Date.now() - (this.gErrT || 0) > 30000) { this.gErrT = Date.now(); log('⚠️ Giọng Google lỗi: ' + e.message + (cfg.fallbackVoice ? ' → dùng giọng Windows dự phòng' : '')); } }
+      else { if (this.online !== false) log('⚠️ VieNeu TTS lỗi: ' + e.message + (cfg.fallbackVoice ? ' → dùng giọng Windows dự phòng' : '')); this.online = false; }
       if (cfg.fallbackVoice) { this.inflight++; toStage('tts', { id: item.id, prio: item.prio, kind: item.kind, text: item.text, fallback: true, lang, volume: cfg.ttsVolume }); }
       else toStage('tts-drop', item.id);
     }
@@ -463,10 +464,52 @@ function pcmToWav(pcm, rate) {
   h.writeUInt32LE(rate * 2, 28); h.writeUInt16LE(2, 32); h.writeUInt16LE(16, 34); h.write('data', 36); h.writeUInt32LE(pcm.length, 40);
   return Buffer.concat([h, pcm]);
 }
+// Giọng Google:
+//  google:vi / google:en       → giọng Google Dịch (miễn phí, không cần key; mỗi đoạn tối đa ~180 ký tự)
+//  gcloud:<tên giọng>           → Google Cloud Text-to-Speech (chất lượng cao, cần API key)
+function chunkText(text, max = 180) {
+  const parts = []; let cur = '';
+  for (const piece of String(text).split(/(?<=[.!?,;:])\s+/)) {
+    for (const w of (piece.length > max ? piece.split(/\s+/) : [piece])) {
+      if ((cur + ' ' + w).trim().length > max && cur) { parts.push(cur.trim()); cur = ''; }
+      cur += ' ' + w;
+    }
+  }
+  if (cur.trim()) parts.push(cur.trim());
+  return parts;
+}
+async function synthGoogle(text, voice, signal) {
+  if (voice.startsWith('gcloud:')) {
+    if (!cfg.googleKey) throw new Error('chưa nhập Google Cloud API key');
+    const name = voice.slice(7);
+    const r = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key=' + encodeURIComponent(cfg.googleKey), {
+      method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: { text }, voice: { languageCode: name.split('-').slice(0, 2).join('-'), name }, audioConfig: { audioEncoding: 'MP3', speakingRate: cfg.googleRate || 1 } }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.audioContent) throw new Error('Google Cloud TTS: ' + (j.error?.message || 'HTTP ' + r.status));
+    return Buffer.from(j.audioContent, 'base64');
+  }
+  const tl = voice.slice(7) || 'vi'; const bufs = [];
+  for (const part of chunkText(text)) {
+    const url = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=' + encodeURIComponent(tl) + '&q=' + encodeURIComponent(part);
+    const r = await fetch(url, { signal, headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36', Referer: 'https://translate.google.com/' } });
+    if (!r.ok) throw new Error('Google Dịch TTS: HTTP ' + r.status);
+    bufs.push(Buffer.from(await r.arrayBuffer()));
+  }
+  return Buffer.concat(bufs); // nối các đoạn MP3 liền nhau
+}
 async function synth(text, voice = cfg.voice) {
   const key = crypto.createHash('sha1').update(voice + '|' + text).digest('hex');
-  const f = path.join(TTS_CACHE, key + '.wav');
+  const isG = /^(google|gcloud):/.test(voice);
+  const f = path.join(TTS_CACHE, key + (isG ? '.mp3' : '.wav'));
   if (fs.existsSync(f)) return new Uint8Array(fs.readFileSync(f));
+  if (isG) {
+    const mp3 = await synthGoogle(text, voice, AbortSignal.timeout(20000));
+    if (mp3.length < 500) throw new Error('âm thanh Google rỗng');
+    fs.writeFile(f, mp3, () => {});
+    return new Uint8Array(mp3);
+  }
   const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 45000);
   try {
     const r = await fetch(cfg.ttsUrl.replace(/\/+$/, '') + '/v1/audio/speech', {
@@ -686,7 +729,7 @@ async function selfTest(dir) {
   const shot = async (w, n) => { try { const img = await w.webContents.capturePage(); fs.writeFileSync(path.join(dir, n + '.png'), img.toPNG()); } catch (e) { console.log('shot fail', e.message); } };
   if (process.env.VNLIVE_WORLDTEST) {
     const wait = ms => new Promise(r => setTimeout(r, ms));
-    cfg.joinVoice = false; await wait(9000);
+    cfg.joinVoice = false; await wait(9000); await shot(stageWin, 'c0'); await wait(150); await shot(stageWin, 'c0b');
     handleComment(fakeUser('John'), 'hello from Alaska'); await wait(3000); await shot(stageWin, 'c1');
     handleComment(fakeUser('Maria'), 'Puerto Rico 🇵🇷'); await wait(300);
     handleComment(fakeUser('Lars'), 'Greenland'); await wait(300);

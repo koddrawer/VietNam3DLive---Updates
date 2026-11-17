@@ -14,7 +14,7 @@ const keyOf = k => (MODE === 'world' && (k === 'title' || k === 'subtitle') ? k 
 cfg = init.cfg;
 
 // ── fields bound to config ──
-const TEXT = ['username', 'apiKey', 'title', 'subtitle', 'ttsUrl', 'vieneuDir', 'updateRepo', 'tierTitle', 'playerBoardTitle'];
+const TEXT = ['googleKey', 'username', 'apiKey', 'title', 'subtitle', 'ttsUrl', 'vieneuDir', 'updateRepo', 'tierTitle', 'playerBoardTitle'];
 const CHECK = ['autoReconnect', 'alwaysOnTop', 'ttsEnabled', 'voiceComments', 'fallbackVoice', 'vieneuGpu', 'autoStartVieneu', 'bgmEnabled', 'bgmShuffle', 'sfxEnabled', 'fwSfx', 'autoUpdate', 'showTierBoard', 'joinVoice', 'joinBanner', 'storyEnabled', 'showPlayerBoard', 'groupGreet'];
 const NUM = ['pointCooldownSec', 'showCooldownSec', 'commentHoldSec', 'idleHomeSec', 'joinVoiceGapSec', 'storyIdleSec', 'playerBoardCount'];
 const set = patch => api.invoke('set-config', patch).then(c => { cfg = c; });
@@ -43,7 +43,7 @@ $('voice').onchange = e => set({ voice: e.target.value });
 function setVoicesEn(list) {
   const win = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang));
   const cur = cfg.voiceEn ?? 'win:';
-  const opts = [['win:', 'Windows — giọng tiếng Anh tự chọn'], ...win.map(v => ['win:' + v.name, 'Windows — ' + v.name]), ...(list && list.length ? list : PRESET_VOICES).map(v => [v, 'VieNeu — ' + v])];
+  const opts = [['win:', 'Windows — giọng tiếng Anh tự chọn'], ...win.map(v => ['win:' + v.name, 'Windows — ' + v.name]), ...GOOGLE_EN, ...(list && list.length ? list : PRESET_VOICES).map(v => [v, 'VieNeu — ' + v])];
   if (!opts.some(o => o[0] === cur)) opts.push([cur, cur]);
   $('voiceEn').innerHTML = opts.map(([v, l]) => `<option value="${v.replace(/"/g, '&quot;')}">${l}</option>`).join('');
   $('voiceEn').value = cur;
@@ -73,10 +73,18 @@ $('checkUpd').onclick = async () => showUpd(await api.invoke('update', 'check'))
 $('restartUpd').onclick = () => api.invoke('update', 'restart');
 api.on('update-status', showUpd);
 
+// giọng Google: miễn phí (Google Dịch) hoặc Google Cloud (cần API key)
+const GOOGLE_VI = [['google:vi', 'Google — tiếng Việt (miễn phí)'], ['gcloud:vi-VN-Neural2-A', 'Google Cloud — Neural2 nữ (cần key)'], ['gcloud:vi-VN-Neural2-D', 'Google Cloud — Neural2 nam (cần key)'],
+  ['gcloud:vi-VN-Wavenet-A', 'Google Cloud — Wavenet A nữ'], ['gcloud:vi-VN-Wavenet-B', 'Google Cloud — Wavenet B nam'], ['gcloud:vi-VN-Wavenet-C', 'Google Cloud — Wavenet C nữ'], ['gcloud:vi-VN-Wavenet-D', 'Google Cloud — Wavenet D nam']];
+const GOOGLE_EN = [['google:en', 'Google — English US (miễn phí)'], ['google:en-GB', 'Google — English UK (miễn phí)'], ['google:en-AU', 'Google — English Úc (miễn phí)'],
+  ['gcloud:en-US-Neural2-F', 'Google Cloud — US Neural2 F nữ'], ['gcloud:en-US-Neural2-J', 'Google Cloud — US Neural2 J nam'], ['gcloud:en-US-Neural2-C', 'Google Cloud — US Neural2 C nữ'],
+  ['gcloud:en-GB-Neural2-A', 'Google Cloud — UK Neural2 A nữ'], ['gcloud:en-GB-Neural2-B', 'Google Cloud — UK Neural2 B nam'], ['gcloud:en-AU-Neural2-B', 'Google Cloud — Úc Neural2 B nam']];
 function setVoices(list) {
   const vs = list && list.length ? list : PRESET_VOICES;
   const cur = cfg.voice;
-  $('voice').innerHTML = [...new Set([cur, ...vs].filter(Boolean))].map(v => `<option>${v}</option>`).join('');
+  const opts = [...vs.map(v => [v, 'VieNeu — ' + v]), ...GOOGLE_VI];
+  if (cur && !opts.some(o => o[0] === cur)) opts.unshift([cur, cur]);
+  $('voice').innerHTML = opts.map(([v, l]) => `<option value="${v.replace(/"/g, '&quot;')}">${l}</option>`).join('');
   $('voice').value = cur;
 }
 $('refreshVoices').onclick = async () => { const l = await api.invoke('tts', { action: 'voices' }); if (l) { setVoices(l); setVoicesEn(l); } else addLog('Không lấy được danh sách giọng — VieNeu chưa chạy?'); };
