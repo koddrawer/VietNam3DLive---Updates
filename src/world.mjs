@@ -108,6 +108,63 @@ const ENAME = { USA: 'USA', GBR: 'United Kingdom', ARE: 'UAE', COD: 'DR Congo', 
   BIH: 'Bosnia & Herz.', CHN: 'China', FSM: 'Micronesia', VAT: 'Vatican', GBR_: '', MKD: 'North Macedonia', KOR: 'South Korea', PRK: 'North Korea', RUS: 'Russia', VNM: 'Vietnam', LAO: 'Laos',
   CZE: 'Czechia', TZA: 'Tanzania', SYR: 'Syria', IRN: 'Iran', BOL: 'Bolivia', VEN: 'Venezuela', CYN: 'N. Cyprus', SOL: 'Somaliland' };
 
+// Vùng vẫn tính riêng (không gộp vào nước khác)
+const KEEP = new Set(['PSX']);
+// Bang / tỉnh / thành phố / vùng nổi tiếng → nước. Tránh tên trùng từ thường hoặc trùng tên nước khác (vd bang Georgia).
+const SUB = {
+  USA: ['Alaska', 'Hawaii', 'California', 'Texas', 'Florida', 'New York', 'New Jersey', 'Washington', 'Oregon', 'Nevada', 'Arizona', 'Utah', 'Colorado',
+    'Idaho', 'Montana', 'Wyoming', 'New Mexico', 'North Dakota', 'South Dakota', 'Nebraska', 'Kansas', 'Oklahoma', 'Minnesota', 'Iowa', 'Missouri',
+    'Arkansas', 'Louisiana', 'Wisconsin', 'Illinois', 'Michigan', 'Indiana', 'Ohio', 'Kentucky', 'Tennessee', 'Mississippi', 'Alabama',
+    'North Carolina', 'South Carolina', 'Virginia', 'West Virginia', 'Maryland', 'Delaware', 'Pennsylvania', 'Connecticut', 'Rhode Island',
+    'Massachusetts', 'Vermont', 'New Hampshire', 'Maine', 'Los Angeles', 'San Francisco', 'San Jose', 'San Diego', 'Seattle', 'Houston', 'Dallas',
+    'Chicago', 'Boston', 'Miami', 'Las Vegas', 'Atlanta', 'Philadelphia', 'Orange County', 'Cali', 'Hoa Thịnh Đốn', 'Cựu Kim Sơn'],
+  CAN: ['Ontario', 'Quebec', 'Québec', 'British Columbia', 'Alberta', 'Manitoba', 'Saskatchewan', 'Nova Scotia', 'New Brunswick', 'Newfoundland', 'Yukon',
+    'Montreal', 'Montréal', 'Ottawa', 'Calgary', 'Edmonton', 'Winnipeg'],
+  AUS: ['New South Wales', 'Queensland', 'Tasmania', 'Western Australia', 'South Australia', 'Northern Territory', 'Adelaide', 'Canberra', 'Gold Coast', 'Darwin'],
+  GBR: ['Northern Ireland', 'Manchester', 'Liverpool', 'Birmingham', 'Edinburgh', 'Glasgow', 'Belfast'],
+  CHN: ['Shanghai', 'Beijing', 'Guangzhou', 'Shenzhen', 'Thâm Quyến', 'Tibet', 'Tây Tạng', 'Xinjiang', 'Tân Cương', 'Hainan', 'Hải Nam', 'Yunnan', 'Vân Nam',
+    'Guangxi', 'Quảng Tây', 'Sichuan', 'Tứ Xuyên', 'Chongqing', 'Trùng Khánh', 'Nam Ninh', 'Côn Minh', 'Hàng Châu', 'Hangzhou', 'Thành Đô', 'Chengdu'],
+  JPN: ['Hokkaido', 'Okinawa', 'Kyoto', 'Nagoya', 'Yokohama', 'Fukuoka', 'Kobe', 'Saitama', 'Chiba', 'Hiroshima', 'Sapporo', 'Kyushu', 'Shizuoka', 'Gunma', 'Aichi', 'Ibaraki'],
+  KOR: ['Incheon', 'Daegu', 'Jeju', 'Gyeonggi', 'Daejeon', 'Ulsan', 'Gwangju'],
+  TWN: ['Taipei', 'Kaohsiung', 'Taichung', 'Tainan', 'Đài Nam', 'Đào Viên', 'Taoyuan', 'Tân Bắc'],
+  THA: ['Phuket', 'Chiang Mai', 'Pattaya', 'Băng Cốc'],
+  MYS: ['Penang', 'Johor', 'Sabah', 'Sarawak', 'Selangor', 'Melaka', 'Malacca'],
+  IDN: ['Java', 'Sumatra', 'Surabaya', 'Bandung', 'Borneo', 'Kalimantan'],
+  PHL: ['Cebu', 'Davao', 'Luzon', 'Mindanao', 'Palawan', 'Quezon'],
+  KHM: ['Siem Reap', 'Xiêm Riệp', 'Battambang', 'Sihanoukville', 'Kampot'],
+  LAO: ['Vientiane', 'Luang Prabang', 'Luông Pha Bang', 'Pakse', 'Savannakhet', 'Chăm pa sắc'],
+  IND: ['Delhi', 'New Delhi', 'Mumbai', 'Kerala', 'Bangalore', 'Bengaluru', 'Kolkata', 'Chennai', 'Hyderabad', 'Punjab', 'Goa'],
+  RUS: ['Siberia', 'Moscow', 'Saint Petersburg', 'Vladivostok', 'Novosibirsk', 'Matxcơva'],
+  DEU: ['Munich', 'München', 'Hamburg', 'Frankfurt', 'Bavaria', 'Bayern', 'Cologne', 'Köln', 'Stuttgart', 'Düsseldorf', 'Leipzig'],
+  FRA: ['Lyon', 'Marseille', 'Corsica', 'Bordeaux', 'Toulouse', 'Strasbourg'],
+  ITA: ['Rome', 'Roma', 'Milan', 'Milano', 'Venice', 'Venezia', 'Sicily', 'Sardinia', 'Naples', 'Napoli', 'Florence', 'Firenze'],
+  ESP: ['Madrid', 'Barcelona', 'Mallorca', 'Ibiza', 'Valencia', 'Sevilla', 'Canarias', 'Canary Islands'],
+  PRT: ['Lisbon', 'Lisboa', 'Porto', 'Madeira', 'Azores'],
+  BRA: ['São Paulo', 'Sao Paulo', 'Rio de Janeiro', 'Brasília', 'Bahia', 'Amazonas'],
+  MEX: ['Mexico City', 'Cancun', 'Cancún', 'Guadalajara', 'Tijuana', 'Monterrey'],
+  NLD: ['Amsterdam', 'Rotterdam', 'The Hague'],
+  DNK: ['Copenhagen'],
+  NOR: ['Oslo', 'Svalbard', 'Bergen'],
+  SWE: ['Stockholm', 'Gothenburg'],
+  FIN: ['Helsinki'],
+  CHE: ['Zurich', 'Zürich', 'Geneva', 'Genève', 'Bern'],
+  AUT: ['Vienna', 'Wien', 'Salzburg'],
+  BEL: ['Brussels', 'Antwerp'],
+  POL: ['Warsaw', 'Krakow'],
+  CZE: ['Prague', 'Praha'],
+  HUN: ['Budapest'],
+  GRC: ['Athens', 'Santorini', 'Crete'],
+  TUR: ['Istanbul', 'Ankara', 'Antalya'],
+  EGY: ['Cairo'],
+  SAU: ['Riyadh', 'Jeddah', 'Mecca'],
+  ARE: ['Sharjah'],
+  NZL: ['Auckland', 'Wellington', 'Christchurch'],
+  ARG: ['Buenos Aires'], CHL: ['Santiago de Chile'], PER: ['Lima'], COL: ['Bogota', 'Bogotá', 'Medellin'],
+  ZAF: ['Cape Town', 'Johannesburg'], NGA: ['Lagos'], KEN: ['Nairobi'],
+  UKR: ['Kyiv', 'Kiev', 'Odessa'], ISR: ['Tel Aviv', 'Jerusalem'],
+  MMR: ['Yangon', 'Mandalay'], BGD: ['Dhaka'], PAK: ['Karachi', 'Lahore', 'Islamabad'], NPL: ['Kathmandu'], MNG: ['Ulaanbaatar', 'Ulan Bato'],
+};
+
 /** Tạo danh sách vùng cho chế độ Thế giới từ dữ liệu bản đồ. */
 export function buildWorld(countries) {
   const list = countries.map(c => ({
@@ -117,14 +174,22 @@ export function buildWorld(countries) {
     matchName: true,
     alias: [c.en, EN_SHORT[c.a3], SHORT[c.a3] && !AMBIG.has(c.a3) && SHORT[c.a3].length > 3 ? SHORT[c.a3] : null, ...(AMBIG.has(c.a3) || SHORT[c.a3] ? [] : [c.vi]), ...(c.alt || []).filter(a => a && a.length >= 4 && !/[.()]/.test(a)), ...(EXTRA[c.a3] || [])],
   }));
-  const vn = list.find(r => r.a3 === 'VNM');
+  // Vùng lãnh thổ phụ thuộc (Guam, Hong Kong, Greenland…) tính điểm cho cả nước chủ quản
+  const byA3 = Object.fromEntries(list.map(r => [r.a3, r]));
+  const sovOf = c => (c.sov && c.sov !== c.a3 && !KEEP.has(c.a3) && byA3[c.sov]) || null;
+  const territories = [];
+  countries.forEach((c, i) => { const s = sovOf(c); if (s) { list[i].target = s; territories.push(list[i]); } });
+  const main = list.filter(r => !r.target);
+  const vn = byA3.VNM;
+  // tên bang/tỉnh/thành phố lớn của các nước → tính cho cả nước đó (Alaska → Mỹ, Hokkaido → Nhật…)
+  const subs = Object.entries(SUB).map(([a3, names]) => byA3[a3] && ({ name: names[0], matchName: true, alias: names.slice(1), target: byA3[a3] })).filter(Boolean);
   // tên tỉnh/thành, địa danh Việt Nam cũng tính cho Việt Nam (dùng chung một bộ so khớp để "Mỹ Tho" ra Việt Nam, không ra Mỹ)
   const vnPlaces = PROVINCES.map(p => ({ name: p.name, alias: p.alias, target: vn }));
-  const find = buildMatcher([...list, ...vnPlaces]);
+  const find = buildMatcher([...main, ...territories, ...subs, ...vnPlaces]);
   return {
-    list,
+    list: main,
     find(text) { const r = find(text); return r ? (r.target || r) : null; },
-    byName: Object.fromEntries(list.map(r => [r.name, r])),
+    byName: Object.fromEntries(main.map(r => [r.name, r])),
     vn,
   };
 }

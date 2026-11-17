@@ -38,12 +38,12 @@ const fmt = n => Number(n || 0).toLocaleString(LOC);
 // chữ trên màn hình live: bản đồ thế giới dùng tiếng Anh
 const TX = WORLD ? {
   board: 'LEADERBOARD', empty: 'Comment your country to get on the board!', gifts: 'GIFTS', players: 'TOP PLAYERS',
-  coin: n => n + (n > 1 ? ' coins' : ' coin'), gave: (g, c) => `Sent ${g || 'a gift'} · ${c} coin${c > 1 ? 's' : ''}`, ptsFor: (p, n) => `+${fmt(p)} points for ${n}!`,
+  coin: n => n + (n > 1 ? ' coins' : ' coin'), gave: (g, c) => `Sent ${g || 'a gift'} · ${c} coin${c > 1 ? 's' : ''}`, ptsFor: (p, n) => `+${fmt(p)} points for ${n}!`, cmtPts: (p, n, t) => `+${p} point for ${n} · total ${fmt(t)}`, cmtNo: (n, t) => `${n} · ${fmt(t)} points`, group: k => `Hello ${k} friends!`,
   ask: p => `Comment your country to get +${p} points!`, welcome: 'WELCOME', joinNew: 'Comment your country to score!', joinBack: '{tinh} is back!', joined: 'joined the live 👋',
   hang: t => `Avatar on map ${Math.round((t.secs || 60) / 60)} min`, fill: t => `Avatar covers country ${Math.round((t.secs || 60) / 60)} min`, zoom: 'Zoom on avatar', glow: 'Glowing avatar', fw: 'fireworks',
 } : {
   board: 'BẢNG XẾP HẠNG', empty: 'Comment tên tỉnh để lên bảng!', gifts: 'TẶNG QUÀ', players: 'TOP NGƯỜI CHƠI',
-  coin: n => n + ' xu', gave: (g, c) => `Tặng ${g || 'quà'} · ${c} xu`, ptsFor: (p, n) => `+${fmt(p)} điểm cho ${n}!`,
+  coin: n => n + ' xu', gave: (g, c) => `Tặng ${g || 'quà'} · ${c} xu`, ptsFor: (p, n) => `+${fmt(p)} điểm cho ${n}!`, cmtPts: (p, n, t) => `+${p} điểm cho ${n} · tổng ${fmt(t)}`, cmtNo: (n, t) => `${n} · ${fmt(t)} điểm`, group: k => `Chào ${k} bạn vừa comment!`,
   ask: p => `Comment tên tỉnh để nhận +${p} điểm!`, welcome: 'CHÀO MỪNG', joinNew: 'Comment tên tỉnh để ghi điểm!', joinBack: 'người {tinh} quay lại', joined: 'vừa vào live 👋',
   hang: t => `Treo avatar ${t.secs || 30}s`, fill: t => `Avatar phủ kín ${t.secs || 60}s`, zoom: 'Zoom cận avatar', glow: 'Avatar tỏa sáng', fw: 'pháo hoa',
 };
@@ -168,6 +168,14 @@ function goHome(dur = 2200) {
   atHome = false; const t = new THREE.Vector3(camT.x + (cfg.panSpeed ?? 28) * dur / 1000, 0, panZ());
   flyTo(t, t.clone().add(PAN_OFF), dur); fl.thenHome = true;
 }
+// zoom thấy trọn 1 vùng hình chữ nhật [x0,z0,x1,z1] (chế độ thế giới), tính cả phần bị bảng che
+function fitView(mb, kH = 2.1, kW = 1.25) {
+  const bw = mb[2] - mb[0], bh = mb[3] - mb[1];
+  const c = new THREE.Vector3(wrapX((mb[0] + mb[2]) / 2), LAND, (mb[1] + mb[3]) / 2);
+  const tv = Math.tan(THREE.MathUtils.degToRad(17)), th = tv * W / H;
+  return viewOf(c, THREE.MathUtils.clamp(Math.max(bw / 2 / th * kW, bh / 2 / tv * kH), 70, 9000));
+}
+const mbOf = P => P.meta.mb || [P.anchor.x - 40, P.anchor.z - 40, P.anchor.x + 40, P.anchor.z + 40];
 function viewOf(anchor, dist) { return { t: anchor.clone(), p: new THREE.Vector3(anchor.x + dist * 0.06, anchor.y + dist * 0.95, anchor.z + dist * 0.62) }; }
 
 // ── bảng xếp hạng / bậc donate ──
@@ -259,14 +267,14 @@ function card(ev) {
   const c = $('card'); c.className = 'card on' + (ev.kind !== 'comment' ? ' gift' : '') + (ev.tier?.effect === 'glow' || ev.tier?.fireworks ? ' glow' : '');
   $('cAv').src = ev.user?.avatar || STORY_ICON; $('cAv').referrerPolicy = 'no-referrer';
   $('cN').textContent = ev.user?.name || '';
-  if (ev.kind === 'comment') { $('cC').textContent = ev.text; $('cR').textContent = ev.points ? `+${ev.points} điểm cho ${ev.province} · tổng ${ev.total.toLocaleString(LOC)}` : `${ev.province} · ${ev.total.toLocaleString(LOC)} điểm`; }
+  if (ev.kind === 'comment') { $('cC').textContent = ev.text; $('cR').textContent = ev.points ? TX.cmtPts(ev.points, ev.province, ev.total) : TX.cmtNo(ev.province, ev.total); }
   else if (ev.kind === 'gift') { $('cC').textContent = TX.gave(ev.giftName, ev.coins) + (ev.text ? ` — “${ev.text}”` : ''); $('cR').textContent = TX.ptsFor(ev.points, ev.province); }
   else { $('cC').textContent = TX.gave(ev.giftName, ev.coins); $('cR').textContent = TX.ask(ev.points); }
   $('cG').hidden = !ev.giftImg; if (ev.giftImg) $('cG').src = ev.giftImg;
   if (ev.kind === 'group') {
     c.className = 'card on group';
     $('cAv').src = ev.users[0]?.avatar || STORY_ICON;
-    $('cN').textContent = `Chào ${ev.users.length} bạn vừa comment!`;
+    $('cN').textContent = TX.group(ev.users.length);
     $('cC').textContent = ev.users.map(x => x.name).join(', ');
     const by = {}; for (const x of ev.users) by[x.province] = (by[x.province] || 0) + (x.points || 0);
     $('cR').textContent = Object.entries(by).filter(([, v]) => v).map(([k, v]) => `+${v} ${k}`).join(' · ');
@@ -341,7 +349,13 @@ function play(ev) {
     const list = ev.users.filter(x => prov[x.province]);
     const names = [...new Set(list.map(x => x.province))];
     ev.hlList = names; for (const n of names) { highlight(n, true); prov[n].label.inner.classList.remove('hot'); }
-    if (names.length === 1) { const P = prov[names[0]]; const v = viewOf(P.anchor, Math.max(P.dist * 1.6, 30)); flyTo(v.t, v.p, 1300); }
+    if (WORLD) { // khung nhìn bao trọn các nước có người comment (gần camera nhất)
+      atHome = false; let box = null;
+      for (const n of names) { const m = mbOf(prov[n]), dx = wrapX(m[0]) - m[0]; const b = [m[0] + dx, m[1], m[2] + dx, m[3]];
+        box = box ? [Math.min(box[0], b[0]), Math.min(box[1], b[1]), Math.max(box[2], b[2]), Math.max(box[3], b[3])] : b; }
+      const v = fitView(box, 1.9, 1.15); v.t.x = (box[0] + box[2]) / 2; v.p.x = v.t.x + (v.p.x - wrapX((box[0] + box[2]) / 2)); flyTo(v.t, v.p, 1500);
+    }
+    else if (names.length === 1) { const P = prov[names[0]]; const v = viewOf(P.anchor, Math.max(P.dist * 1.6, 30)); flyTo(v.t, v.p, 1300); }
     else { atHome = false; flyTo(HOME.t, HOME.p, 1300); }
     const count = {};
     for (const x of list.slice(0, 16)) {
@@ -360,19 +374,14 @@ function play(ev) {
   else {
     const P = prov[ev.province]; highlight(ev.province, true);
     if (ev.kind === 'comment') {
-      const v = viewOf(P.anchor, P.dist); flyTo(v.t, v.p, 1300);
+      const v = WORLD ? fitView(mbOf(P)) : viewOf(P.anchor, P.dist); if (WORLD) atHome = false; flyTo(v.t, v.p, WORLD ? 1500 : 1300);
       marker = makeMarker(ev, '');
       dur = Math.max(2000, ((cfg.commentHoldSec || 4) - queue.length * 0.35) * 1000) + 900;
       if (ev.voice.length) dur = Math.min(dur, 2600); // có giọng chào thì chờ đọc xong là chính
     } else {
       const t = ev.tier || {};
       if (WORLD) { // zoom thấy trọn nước + lá cờ hiện trên nước đó
-        const mb = P.meta.mb || [P.anchor.x - 40, P.anchor.z - 40, P.anchor.x + 40, P.anchor.z + 40];
-        const bw = mb[2] - mb[0], bh = mb[3] - mb[1];
-        const c = new THREE.Vector3(wrapX((mb[0] + mb[2]) / 2), LAND, (mb[1] + mb[3]) / 2);
-        const tv = Math.tan(THREE.MathUtils.degToRad(17)), th = tv * W / H;
-        const d = THREE.MathUtils.clamp(Math.max(bw / 2 / th * 1.25, bh / 2 / tv * 2.1), 70, 9000);
-        const v = viewOf(c, d); atHome = false; flyTo(v.t, v.p, 1800);
+        const v = fitView(mbOf(P)); atHome = false; flyTo(v.t, v.p, 1800);
         const fill = t.effect === 'fill' && ev.user?.avatar;
         if (ev.iso2) addOverlay(P, 'flag', `../assets/flags/${ev.iso2}.svg`, fill ? 4200 : 7000);
         if (t.effect === 'hang') addHang(ev);

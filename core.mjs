@@ -11,7 +11,7 @@ const CTX = globalThis.__vnlive;
 const { TikTokLiveConnection, WebcastEvent, ControlEvent } = CTX.tiktok;
 const ROOT = CTX.ROOT;            // thư mục gốc gói cài (asar)
 const res = rel => CTX.resolve(rel); // file thực tế: bản cập nhật nếu có, không thì bản gốc
-export const CORE_VERSION = '1.4.0';
+export const CORE_VERSION = '1.4.1';
 const UD = app.getPath('userData');
 const CFG_FILE = path.join(UD, 'config.json');
 // chế độ bản đồ: 'vn' (34 tỉnh) hoặc 'world' (thế giới) — đổi chế độ thì app tự khởi động lại
@@ -249,10 +249,9 @@ function handleComment(user, text) {
   if (now - (lastPoint.get(u.uid) || 0) >= cfg.pointCooldownSec * 1000) {
     lastPoint.set(u.uid, now); pts = 1; scores[p.name] += 1; pushScores([p.name]); addPlayer(u, p.name, 1);
   }
-  if (now - (lastShow.get(u.uid) || 0) < cfg.showCooldownSec * 1000) return;
+  if (now - (lastShow.get(u.uid) || 0) < cfg.showCooldownSec * 1000) { if (WORLD) toStage('pop', { user: u, province: p.name, points: pts, text }); return; }
   lastShow.set(u.uid, now);
-  if (WORLD) return worldComment(u, p, text, pts);
-  greetBuf.add({ u, p, text, pts });
+  greetBuf.add({ u, p, text, pts }); // cả 2 bản đồ: zoom tới người comment (đông người thì gộp)
 }
 // Bản đồ thế giới: comment không zoom — chỉ hiện avatar nhỏ + tên trên nước đó rồi biến mất; lời chào đọc khi rảnh
 let lastWorldGreet = 0;
@@ -681,15 +680,14 @@ async function selfTest(dir) {
   if (process.env.VNLIVE_WORLDTEST) {
     const wait = ms => new Promise(r => setTimeout(r, ms));
     cfg.joinVoice = false; await wait(9000);
-    await shot(stageWin, 'p0'); await wait(8000); await shot(stageWin, 'p1');
-    for (const [n, t] of [['John', 'hello from USA'], ['Minh Anh', 'Việt Nam'], ['Kim', 'Korea'], ['Ana', 'Brazil'], ['Lan', 'Hà Nội'], ['Yuki', 'Japan'], ['Raj', 'India']]) handleComment(fakeUser(n), t);
-    await wait(1200); await shot(stageWin, 'p2');
-    const gift = async (name, country, coins, tag, w1 = 3500, w2 = 6000) => { const u = fakeUser(name); handleComment(u, country); await wait(200); handleGift(u, coins, 'Rose', ''); await wait(w1); await shot(stageWin, tag + 'a'); await wait(w2); await shot(stageWin, tag + 'b'); };
-    await gift('Ivan', 'Russia', 10, 'g10', 2600, 1500);
-    await gift('Lan', 'Việt Nam', 50, 'g50', 2600, 4500);
-    await gift('Kim', 'Korea', 5, 'g5', 2600, 1000);
-    await wait(8000); await shot(stageWin, 'after');
-    console.log('WORLD scores ' + JSON.stringify(standings().filter(r => r.score).slice(0, 10)));
+    handleComment(fakeUser('John'), 'hello from Alaska'); await wait(3000); await shot(stageWin, 'c1');
+    handleComment(fakeUser('Maria'), 'Puerto Rico 🇵🇷'); await wait(300);
+    handleComment(fakeUser('Lars'), 'Greenland'); await wait(300);
+    handleComment(fakeUser('Ho'), 'Hồng Kông'); await wait(6000); await shot(stageWin, 'c2');
+    for (const [n, t] of [['Kim', 'Seoul'], ['Ana', 'Rio de Janeiro'], ['Lan', 'Hà Nội'], ['Yuki', 'Tokyo'], ['Raj', 'Mumbai'], ['Pierre', 'Paris'], ['Tom', 'Texas']]) handleComment(fakeUser(n), t);
+    await wait(9000); await shot(stageWin, 'c3'); await wait(9000); await shot(stageWin, 'c4');
+    await wait(15000); await shot(stageWin, 'c5');
+    console.log('WORLD scores ' + JSON.stringify(standings().filter(r => r.score)));
     return app.quit();
   }
   if (process.env.VNLIVE_GROUPTEST) {
