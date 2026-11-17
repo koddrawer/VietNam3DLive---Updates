@@ -104,7 +104,8 @@ td input,td select{padding:4px 6px}
     <h2>Giọng đọc VieNeu-TTS <span class="pill" id="ttsPill2">—</span></h2>
     <div class="r">
       <label class="f">Địa chỉ server<input type="text" id="ttsUrl"></label>
-      <label class="f">Giọng<select id="voice"></select></label>
+      <label class="f">Giọng tiếng Việt<select id="voice"></select></label>
+      <label class="f">Giọng tiếng Anh (bản đồ thế giới)<select id="voiceEn"></select></label>
       <button id="refreshVoices" title="Lấy danh sách giọng từ server">↻</button>
     </div>
     <div class="r">
@@ -186,6 +187,7 @@ td input,td select{padding:4px 6px}
     <p class="note">Quà lẻ (vd 50 xu) dùng hiệu ứng của bậc gần nhất bên dưới, điểm tính theo tỉ lệ bậc đó (50 xu → 50 × 200/30 ≈ 333 điểm).</p>
     <div class="grid2">
       <label class="f">Mỗi người chỉ được +1 điểm/… giây<input type="number" id="pointCooldownSec" min="0" step="1"></label>
+      <label class="ck" style="grid-column:1/-1"><input type="checkbox" id="groupGreet"> Gộp lời chào khi đông người (tắt = chào lần lượt từng người)</label>
       <label class="f">Mỗi người được zoom + chào lại sau … giây<input type="number" id="showCooldownSec" min="0" step="1"></label>
       <label class="f">Giọng chào người mới cách nhau ít nhất … giây<input type="number" id="joinVoiceGapSec" min="0" step="1"></label>
       <label class="f">Thời gian dừng ở mỗi comment (giây)<input type="number" id="commentHoldSec" min="1" step="0.5"></label>

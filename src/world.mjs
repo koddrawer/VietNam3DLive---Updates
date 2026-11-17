@@ -169,8 +169,8 @@ const SUB = {
 export function buildWorld(countries) {
   const list = countries.map(c => ({
     // chế độ thế giới hiển thị & đọc bằng tiếng Anh cho mọi nước (kể cả Việt Nam)
-    id: c.id, a3: c.a3, iso2: (c.iso2 || '').toLowerCase(), name: ENAME[c.a3] || c.en, vi: SHORT[c.a3] || c.vi, spoken: EN_SHORT[c.a3] || c.en,
-    en: EN_SHORT[c.a3] || c.en, lang: 'en',
+    id: c.id, a3: c.a3, iso2: (c.iso2 || '').toLowerCase(), name: ENAME[c.a3] || c.en, vi: SHORT[c.a3] || c.vi, spoken: EN_SHORT[c.a3] || ENAME[c.a3] || c.en,
+    en: EN_SHORT[c.a3] || ENAME[c.a3] || c.en, lang: 'en',
     matchName: true,
     alias: [c.en, EN_SHORT[c.a3], SHORT[c.a3] && !AMBIG.has(c.a3) && SHORT[c.a3].length > 3 ? SHORT[c.a3] : null, ...(AMBIG.has(c.a3) || SHORT[c.a3] ? [] : [c.vi]), ...(c.alt || []).filter(a => a && a.length >= 4 && !/[.()]/.test(a)), ...(EXTRA[c.a3] || [])],
   }));

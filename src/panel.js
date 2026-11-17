@@ -15,7 +15,7 @@ cfg = init.cfg;
 
 // ── fields bound to config ──
 const TEXT = ['username', 'apiKey', 'title', 'subtitle', 'ttsUrl', 'vieneuDir', 'updateRepo', 'tierTitle', 'playerBoardTitle'];
-const CHECK = ['autoReconnect', 'alwaysOnTop', 'ttsEnabled', 'voiceComments', 'fallbackVoice', 'vieneuGpu', 'autoStartVieneu', 'bgmEnabled', 'bgmShuffle', 'sfxEnabled', 'fwSfx', 'autoUpdate', 'showTierBoard', 'joinVoice', 'joinBanner', 'storyEnabled', 'showPlayerBoard'];
+const CHECK = ['autoReconnect', 'alwaysOnTop', 'ttsEnabled', 'voiceComments', 'fallbackVoice', 'vieneuGpu', 'autoStartVieneu', 'bgmEnabled', 'bgmShuffle', 'sfxEnabled', 'fwSfx', 'autoUpdate', 'showTierBoard', 'joinVoice', 'joinBanner', 'storyEnabled', 'showPlayerBoard', 'groupGreet'];
 const NUM = ['pointCooldownSec', 'showCooldownSec', 'commentHoldSec', 'idleHomeSec', 'joinVoiceGapSec', 'storyIdleSec', 'playerBoardCount'];
 const set = patch => api.invoke('set-config', patch).then(c => { cfg = c; });
 function fill() {
@@ -25,7 +25,7 @@ function fill() {
   $('resolution').value = cfg.resolution; $('windowScale').value = cfg.windowScale; $('wsv').textContent = cfg.windowScale + '%';
   $('ttsVolume').value = cfg.ttsVolume; $('volv').textContent = Math.round(cfg.ttsVolume * 100) + '%';
   for (const k of SLIDE) { $(k).value = cfg[k]; $(k + 'v').textContent = Math.round(cfg[k] * 100) + '%'; }
-  setVoices(null); renderTiers(); renderBgm();
+  setVoices(null); setVoicesEn(null); renderTiers(); renderBgm();
   for (const k of ['joinLabel', 'joinTicker', 'joinSub', 'joinSubBack']) $(k).value = cfg[k] ?? '';
   $('joinBanner2').checked = cfg.joinBanner !== false; $('joinVoice2').checked = cfg.joinVoice !== false;
   for (const el of document.querySelectorAll('#storyTypes input')) el.checked = (cfg.storyTypes || {})[el.dataset.t] !== false;
@@ -39,6 +39,17 @@ $('windowScale').onchange = e => set({ windowScale: +e.target.value });
 $('ttsVolume').oninput = e => { $('volv').textContent = Math.round(e.target.value * 100) + '%'; };
 $('ttsVolume').onchange = e => set({ ttsVolume: +e.target.value });
 $('voice').onchange = e => set({ voice: e.target.value });
+// giọng tiếng Anh: giọng Windows (tiếng Anh) hoặc 1 giọng VieNeu khác
+function setVoicesEn(list) {
+  const win = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang));
+  const cur = cfg.voiceEn ?? 'win:';
+  const opts = [['win:', 'Windows — giọng tiếng Anh tự chọn'], ...win.map(v => ['win:' + v.name, 'Windows — ' + v.name]), ...(list && list.length ? list : PRESET_VOICES).map(v => [v, 'VieNeu — ' + v])];
+  if (!opts.some(o => o[0] === cur)) opts.push([cur, cur]);
+  $('voiceEn').innerHTML = opts.map(([v, l]) => `<option value="${v.replace(/"/g, '&quot;')}">${l}</option>`).join('');
+  $('voiceEn').value = cur;
+}
+speechSynthesis.onvoiceschanged = () => setVoicesEn(null);
+$('voiceEn').onchange = e => set({ voiceEn: e.target.value });
 const SLIDE = ['bgmVolume', 'bgmDuck', 'sfxVolume', 'labelScale'];
 for (const k of SLIDE) { $(k).oninput = e => { $(k + 'v').textContent = Math.round(e.target.value * 100) + '%'; }; $(k).onchange = e => set({ [k]: +e.target.value }); }
 function renderBgm() {
@@ -68,7 +79,7 @@ function setVoices(list) {
   $('voice').innerHTML = [...new Set([cur, ...vs].filter(Boolean))].map(v => `<option>${v}</option>`).join('');
   $('voice').value = cur;
 }
-$('refreshVoices').onclick = async () => { const l = await api.invoke('tts', { action: 'voices' }); if (l) setVoices(l); else addLog('Không lấy được danh sách giọng — VieNeu chưa chạy?'); };
+$('refreshVoices').onclick = async () => { const l = await api.invoke('tts', { action: 'voices' }); if (l) { setVoices(l); setVoicesEn(l); } else addLog('Không lấy được danh sách giọng — VieNeu chưa chạy?'); };
 
 // ── tiers ──
 const autoDesc = t => t.fireworks ? `Avatar to ${t.secs || 60}s + pháo hoa` : t.effect === 'hang' ? `Treo avatar ${t.secs || 30}s` : t.effect === 'glow' ? 'Avatar tỏa sáng' : 'Zoom cận avatar';

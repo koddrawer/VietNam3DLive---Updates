@@ -11,7 +11,7 @@ const CTX = globalThis.__vnlive;
 const { TikTokLiveConnection, WebcastEvent, ControlEvent } = CTX.tiktok;
 const ROOT = CTX.ROOT;            // thư mục gốc gói cài (asar)
 const res = rel => CTX.resolve(rel); // file thực tế: bản cập nhật nếu có, không thì bản gốc
-export const CORE_VERSION = '1.4.1';
+export const CORE_VERSION = '1.4.2';
 const UD = app.getPath('userData');
 const CFG_FILE = path.join(UD, 'config.json');
 // chế độ bản đồ: 'vn' (34 tỉnh) hoặc 'world' (thế giới) — đổi chế độ thì app tự khởi động lại
@@ -36,7 +36,7 @@ const DEFAULTS = {
   vieneuDir: '', vieneuGpu: false, autoStartVieneu: false,
   autoUpdate: true, updateRepo: 'koddrawer/VietNam3DLive---Updates', updateBranch: 'main',
   joinVoice: true, joinBanner: true, joinVoiceGapSec: 8,
-  labelScale: 1, showPlayerBoard: true, playerBoardTitle: 'TOP NGƯỜI CHƠI', playerBoardCount: 5,
+  labelScale: 1, groupGreet: false, voiceEn: 'win:', showPlayerBoard: true, playerBoardTitle: 'TOP NGƯỜI CHƠI', playerBoardCount: 5,
   storyEnabled: true, storyIdleSec: 45, storyTypes: { dangian: true, ma: true, cuoi: true, ngungon: true },
   bgmEnabled: false, bgmFiles: [], bgmPath: '', bgmVolume: 0.35, bgmDuck: 0.35, bgmShuffle: true,
   sfxEnabled: true, sfxVolume: 0.8, fwSfx: true,
@@ -278,7 +278,7 @@ const greetBuf = {
     if (!this.items.length || pendingGreet.size >= (cfg.greetBacklog || 2)) return;
     // mỗi lượt tối đa 8 người (đọc đủ tên); hàng chờ quá dài thì lượt lớn hơn để không bị trễ quá lâu
     const n = this.items.length;
-    const size = n <= 8 ? n : Math.max(8, Math.ceil(n / 5));
+    const size = !cfg.groupGreet ? 1 : n <= 8 ? n : Math.max(8, Math.ceil(n / 5)); // mặc định chào lần lượt từng người
     const batch = this.items.splice(0, size);
     if (batch.length === 1) sendSingleGreet(batch[0]); else sendGroupGreet(batch);
   },
@@ -432,14 +432,21 @@ const tts = {
     if (this.busy || this.inflight >= 2 || !this.q.length) return;
     this.q.sort((a, b) => b.prio - a.prio || a.t - b.t);
     const item = this.q.shift(); this.busy = true;
+    // bản đồ thế giới đọc tiếng Anh bằng giọng riêng (giọng VieNeu khác, hoặc giọng tiếng Anh của Windows)
+    const voice = WORLD ? (cfg.voiceEn || 'win:') : cfg.voice;
+    const lang = WORLD ? 'en-US' : 'vi-VN';
+    if (voice.startsWith('win:')) {
+      this.inflight++; toStage('tts', { id: item.id, prio: item.prio, kind: item.kind, text: item.text, fallback: true, lang, voiceName: voice.slice(4), volume: cfg.ttsVolume });
+      this.busy = false; return this.pump();
+    }
     try {
-      const wav = await synth(item.text);
+      const wav = await synth(item.text, voice);
       this.online = true;
       this.inflight++; toStage('tts', { id: item.id, prio: item.prio, kind: item.kind, text: item.text, wav, volume: cfg.ttsVolume });
     } catch (e) {
       if (this.online !== false) log('⚠️ VieNeu TTS lỗi: ' + e.message + (cfg.fallbackVoice ? ' → dùng giọng Windows dự phòng' : ''));
       this.online = false;
-      if (cfg.fallbackVoice) { this.inflight++; toStage('tts', { id: item.id, prio: item.prio, kind: item.kind, text: item.text, fallback: true, volume: cfg.ttsVolume }); }
+      if (cfg.fallbackVoice) { this.inflight++; toStage('tts', { id: item.id, prio: item.prio, kind: item.kind, text: item.text, fallback: true, lang, volume: cfg.ttsVolume }); }
       else toStage('tts-drop', item.id);
     }
     toPanel('tts-status', { online: this.online, queue: this.q.length });
@@ -456,8 +463,8 @@ function pcmToWav(pcm, rate) {
   h.writeUInt32LE(rate * 2, 28); h.writeUInt16LE(2, 32); h.writeUInt16LE(16, 34); h.write('data', 36); h.writeUInt32LE(pcm.length, 40);
   return Buffer.concat([h, pcm]);
 }
-async function synth(text) {
-  const key = crypto.createHash('sha1').update(cfg.voice + '|' + text).digest('hex');
+async function synth(text, voice = cfg.voice) {
+  const key = crypto.createHash('sha1').update(voice + '|' + text).digest('hex');
   const f = path.join(TTS_CACHE, key + '.wav');
   if (fs.existsSync(f)) return new Uint8Array(fs.readFileSync(f));
   const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 45000);
@@ -465,7 +472,7 @@ async function synth(text) {
     const r = await fetch(cfg.ttsUrl.replace(/\/+$/, '') + '/v1/audio/speech', {
       method: 'POST', signal: ctl.signal,
       headers: { 'Content-Type': 'application/json', ...(cfg.ttsKey ? { Authorization: 'Bearer ' + cfg.ttsKey } : {}) },
-      body: JSON.stringify({ model: 'vieneu-v3-turbo', input: text, voice: cfg.voice || undefined, response_format: 'pcm', sample_rate: 24000 }),
+      body: JSON.stringify({ model: 'vieneu-v3-turbo', input: text, voice: voice || undefined, response_format: 'pcm', sample_rate: 24000 }),
     });
     if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + (await r.text()).slice(0, 160));
     const pcm = Buffer.from(await r.arrayBuffer());
@@ -686,7 +693,9 @@ async function selfTest(dir) {
     handleComment(fakeUser('Ho'), 'Hồng Kông'); await wait(6000); await shot(stageWin, 'c2');
     for (const [n, t] of [['Kim', 'Seoul'], ['Ana', 'Rio de Janeiro'], ['Lan', 'Hà Nội'], ['Yuki', 'Tokyo'], ['Raj', 'Mumbai'], ['Pierre', 'Paris'], ['Tom', 'Texas']]) handleComment(fakeUser(n), t);
     await wait(9000); await shot(stageWin, 'c3'); await wait(9000); await shot(stageWin, 'c4');
-    await wait(15000); await shot(stageWin, 'c5');
+    await wait(25000); await shot(stageWin, 'c5');
+    console.log('SHOWS ' + JSON.stringify((await stageWin.webContents.executeJavaScript('window.__shows')).map(x => x.kind + ':' + x.names.join('/'))));
+    console.log('VOICES ' + (await stageWin.webContents.executeJavaScript('(window.__voices||[]).map(x=>x.text.slice(0,40)).join(" | ")')));
     console.log('WORLD scores ' + JSON.stringify(standings().filter(r => r.score)));
     return app.quit();
   }

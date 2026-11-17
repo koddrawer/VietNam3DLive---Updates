@@ -20,6 +20,7 @@ let cfg = { commentHoldSec: 4, idleHomeSec: 6, tiers: [], title: 'BẢN ĐỒ VI
 const renderer = new THREE.WebGLRenderer({ canvas: $('gl'), antialias: true });
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 const lr = new CSS2DRenderer({ element: $('lbl') });
+lr.sortObjects = false; // thứ tự lớp cố định theo loại (tránh chữ nhảy/nhấp nháy khi camera chạy)
 lr.setSize(W, H);
 function fit() {
   const s = Math.min(innerWidth / W, innerHeight / H);
@@ -126,7 +127,8 @@ for (const [ext, w, color] of (WORLD ? [[0, 1.4, 0xffffff], [1, 1.2, 0x0a1a24]] 
 }
 
 // nhãn
-function css2d(html, cls, pos) { const d = document.createElement('div'); const inner = document.createElement('div'); inner.className = cls; inner.innerHTML = html; d.appendChild(inner); const o = new CSS2DObject(d); o.inner = inner; o.position.copy(pos); o.userData.bx = pos.x; scene.add(o); return o; }
+const ZL = { pl: 2, plc: 1, seaL: 0, mk: 30, hang: 20, pop: 25 };
+function css2d(html, cls, pos) { const d = document.createElement('div'); d.style.zIndex = ZL[cls.split(' ')[0]] ?? 5; const inner = document.createElement('div'); inner.className = cls; inner.innerHTML = html; d.appendChild(inner); const o = new CSS2DObject(d); o.inner = inner; o.position.copy(pos); o.userData.bx = pos.x; scene.add(o); return o; }
 for (const name in prov) {
   const P = prov[name];
   const o = css2d(`<span class="n">${name}</span><span class="s" hidden>0</span>`, 'pl', P.anchor.clone().add(new THREE.Vector3(0, 0.5, 0)));
@@ -479,8 +481,10 @@ async function playVoice(d) {
   playing = { id: d.id, stop() {} };
   if (actx.state === 'suspended') try { await actx.resume(); } catch {}
   if (d.fallback) {
-    const u = new SpeechSynthesisUtterance(d.text); u.lang = 'vi-VN'; u.volume = d.volume ?? 1;
-    const v = speechSynthesis.getVoices().find(v => /^vi/i.test(v.lang)); if (v) u.voice = v;
+    const u = new SpeechSynthesisUtterance(d.text); u.lang = d.lang || 'vi-VN'; u.volume = d.volume ?? 1;
+    const vs = speechSynthesis.getVoices(), pre = (d.lang || 'vi').slice(0, 2);
+    const v = (d.voiceName && vs.find(v => v.name === d.voiceName)) || vs.find(v => v.lang.toLowerCase().startsWith(pre) && /natural|aria|jenny|guy/i.test(v.name)) || vs.find(v => v.lang.toLowerCase().startsWith(pre));
+    if (v) u.voice = v;
     let ended = false; const end = () => { if (!ended) { ended = true; ttsDone(); } };
     u.onend = end; u.onerror = end; setTimeout(end, 20000);
     playing.stop = () => { speechSynthesis.cancel(); end(); };
@@ -612,7 +616,8 @@ renderer.setAnimationLoop(now => {
   if (WD) { // đi hết 1 vòng thì nhảy về bản sao tương ứng (không thấy được vì bản đồ lặp lại)
     const sh = camT.x > WD / 2 ? -WD : camT.x < -WD / 2 ? WD : 0;
     if (sh) { camT.x += sh; camera.position.x += sh; if (fl) for (const v of [fl.ft, fl.tt, fl.fp, fl.tp]) v.x += sh; for (const o of overlays) o.mesh.position.x += sh; }
-    for (const o of scene.children) if (o.isCSS2DObject && o.userData.bx != null) o.position.x = wrapX(o.userData.bx);
+    const lim = WD * 0.42; // chữ ở quá xa (sát mép vòng lặp) thì ẩn, tránh nhảy qua lại giữa 2 bản sao
+    for (const o of scene.children) if (o.isCSS2DObject && o.userData.bx != null) { o.position.x = wrapX(o.userData.bx); o.visible = Math.abs(o.position.x - camT.x) < lim; }
     for (const o of overlays) o.mesh.position.x = Math.round((camT.x - o.cx) / WD) * WD;
   }
   camera.lookAt(camT);
@@ -620,7 +625,7 @@ renderer.setAnimationLoop(now => {
   if (WORLD) { scene.fog.near = dist * 1.15; scene.fog.far = dist * 2.4; camera.far = Math.max(12000, dist * 3); camera.updateProjectionMatrix(); }
   const far = dist > 170; if (far !== lblFar) { lblFar = far; $('lbl').classList.toggle('far', far); }
   if (WORLD) { // bản đồ thế giới: xa thì chỉ hiện tên nước lớn + nước đã có điểm
-    const lv = dist > 1100 ? 3 : dist > 650 ? 4 : dist > 350 ? 5 : 99;
+    const lv = dist > 3000 ? 2 : dist > 1100 ? 3 : dist > 650 ? 4 : dist > 350 ? 5 : 99;
     if (lv !== lblLevel || lblDirty) { lblLevel = lv; lblDirty = false; for (const n in prov) { const P = prov[n]; P.label.inner.classList.toggle('off', !(P.meta.minl <= lv || P.score > 0)); } }
   }
   // zoom càng gần thì tên tỉnh + điểm càng to (toàn cảnh giữ cỡ cũ)
