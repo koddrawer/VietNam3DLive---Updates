@@ -1,9 +1,9 @@
 {
-  "version": "1.4.2",
+  "version": "1.4.3",
   "minShell": "1.1.2",
-  "notes": "Chào lần lượt từng người, giọng tiếng Anh riêng, sửa chữ nhảy khi chạy bản đồ",
+  "notes": "Chữ trên bản đồ chạy mượt (không giật bậc), nước nhỏ không zoom quá sát",
   "files": {
-    "core.mjs": "6a2e5a0b8ac60e1781fffc8ba6633e2d0dadd85a9ffe8b132e63ded3d89b57fa",
+    "core.mjs": "f2c620d77b94000605cd43d2ddc2ddf4fe2e65702b81f9f198fa5dd6990a12b8",
     "preload.cjs": "29bb4a931981176f1c2188bb46eff380bea0531468f7ae1e89f7043c694f51db",
     "assets/greetings.json": "83978a766e9cdfe1f331e1780856c82c57ec9d3ce10319f102dd7b96ce26cd04",
     "assets/stories.json": "ae188810f78c8909fae125637c4a1507896a790cff42d6137b5785121fc71590",
@@ -14,7 +14,7 @@
     "src/panel.js": "7860976f253ce96e43304bb3b499315e0f85a71d09b389fd6a6a9879bfc353c4",
     "src/provinces.mjs": "d1235273436ca52d4254f8ce81b4fc5065c4ae167c4116eebc8b17ff4e3324c6",
     "src/stage.html": "aa060eed09ca79885d80eb483f1dac2bfa3b781a5f542cf853abb723dbe7cc88",
-    "src/stage.js": "4737ba4265122edc0154e607218f602c4590ab77c0f934401f7b3671dfa96470",
+    "src/stage.js": "da01ecd79c56286ce707f9504d7e9d07a61a435ed71ac775f11fd8a3c827ad42",
     "src/world.mjs": "3f430e500b9f79a92db24ec1d8dc20886130395f85b12fc70f096510016a86e5",
     "assets/flags/LICENSE-flag-icons.txt": "8f1195d55a2fd315a07d812328470ca9ba2abb78c8d317ff19619d5125e00cea",
     "assets/flags/ad.svg": "5d1a748c1a26a6748d91591e5c8a5f2be78f2355ed6332cda20ce72bda0f6b92",

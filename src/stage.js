@@ -128,7 +128,7 @@ for (const [ext, w, color] of (WORLD ? [[0, 1.4, 0xffffff], [1, 1.2, 0x0a1a24]] 
 
 // nhãn
 const ZL = { pl: 2, plc: 1, seaL: 0, mk: 30, hang: 20, pop: 25 };
-function css2d(html, cls, pos) { const d = document.createElement('div'); d.style.zIndex = ZL[cls.split(' ')[0]] ?? 5; const inner = document.createElement('div'); inner.className = cls; inner.innerHTML = html; d.appendChild(inner); const o = new CSS2DObject(d); o.inner = inner; o.position.copy(pos); o.userData.bx = pos.x; scene.add(o); return o; }
+function css2d(html, cls, pos) { const d = document.createElement('div'); d.style.zIndex = ZL[cls.split(' ')[0]] ?? 5; d.style.willChange = 'transform'; /* lớp riêng → chữ di chuyển mượt theo từng phần pixel, không giật bậc */ const inner = document.createElement('div'); inner.className = cls; inner.innerHTML = html; d.appendChild(inner); const o = new CSS2DObject(d); o.inner = inner; o.position.copy(pos); o.userData.bx = pos.x; scene.add(o); return o; }
 for (const name in prov) {
   const P = prov[name];
   const o = css2d(`<span class="n">${name}</span><span class="s" hidden>0</span>`, 'pl', P.anchor.clone().add(new THREE.Vector3(0, 0.5, 0)));
@@ -175,7 +175,7 @@ function fitView(mb, kH = 2.1, kW = 1.25) {
   const bw = mb[2] - mb[0], bh = mb[3] - mb[1];
   const c = new THREE.Vector3(wrapX((mb[0] + mb[2]) / 2), LAND, (mb[1] + mb[3]) / 2);
   const tv = Math.tan(THREE.MathUtils.degToRad(17)), th = tv * W / H;
-  return viewOf(c, THREE.MathUtils.clamp(Math.max(bw / 2 / th * kW, bh / 2 / tv * kH), 70, 9000));
+  return viewOf(c, THREE.MathUtils.clamp(Math.max(bw / 2 / th * kW, bh / 2 / tv * kH), 300, 9000)); // nước nhỏ vẫn thấy được nước xung quanh
 }
 const mbOf = P => P.meta.mb || [P.anchor.x - 40, P.anchor.z - 40, P.anchor.x + 40, P.anchor.z + 40];
 function viewOf(anchor, dist) { return { t: anchor.clone(), p: new THREE.Vector3(anchor.x + dist * 0.06, anchor.y + dist * 0.95, anchor.z + dist * 0.62) }; }
