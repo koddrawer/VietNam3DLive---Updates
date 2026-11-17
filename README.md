@@ -1,3 +1,3 @@
 # VietNam3DLive — kho cập nhật
 
-App tự đọc `manifest.json` ở nhánh main. Bản hiện tại: **1.3.0** — Thêm bản đồ Thế giới (chuyển qua lại với bản đồ Việt Nam)
+App tự đọc `manifest.json` ở nhánh main. Bản hiện tại: **1.4.0** — Bản đồ thế giới: tiếng Anh, cờ, avatar treo/phủ nước, chạy vòng liên tục

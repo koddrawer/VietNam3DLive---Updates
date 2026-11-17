@@ -8,6 +8,8 @@ let cfg = {};
 const init = await api.invoke('init');
 const MODE = init.mode || 'vn';
 // tiêu đề/dòng phụ lưu riêng cho từng bản đồ
+const TK = MODE === 'world' ? 'tiersWorld' : 'tiers'; // luật quà lưu riêng cho mỗi bản đồ
+const EFX = () => (MODE === 'world' ? { hang: 'Treo avatar trên nước', fill: 'Avatar phủ kín nước' } : EFFECTS);
 const keyOf = k => (MODE === 'world' && (k === 'title' || k === 'subtitle') ? k + 'World' : k);
 cfg = init.cfg;
 
@@ -72,42 +74,43 @@ $('refreshVoices').onclick = async () => { const l = await api.invoke('tts', { a
 const autoDesc = t => t.fireworks ? `Avatar to ${t.secs || 60}s + pháo hoa` : t.effect === 'hang' ? `Treo avatar ${t.secs || 30}s` : t.effect === 'glow' ? 'Avatar tỏa sáng' : 'Zoom cận avatar';
 const escA = v => String(v ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 function renderTierText() {
-  $('tierText').innerHTML = cfg.tiers.map((t, i) => `<tr>
+  $('tierText').innerHTML = cfg[TK].map((t, i) => `<tr>
     <td><input type="text" data-i="${i}" data-k="coinText" value="${escA(t.coinText)}" placeholder="${t.coins} xu"></td>
     <td><input type="text" data-i="${i}" data-k="label" value="${escA(t.label)}" placeholder="${escA(autoDesc(t))}"></td>
     <td><input type="text" data-i="${i}" data-k="pointText" value="${escA(t.pointText)}" placeholder="+${t.points}"></td></tr>`).join('');
 }
 $('tierText').addEventListener('change', e => {
   const el = e.target; const i = +el.dataset.i, k = el.dataset.k; if (!k) return;
-  const tiers = cfg.tiers.map(t => ({ ...t }));
+  const tiers = cfg[TK].map(t => ({ ...t }));
   if (el.value === '') delete tiers[i][k]; else tiers[i][k] = el.value.trim() || ' ';
-  set({ tiers });
+  set({ [TK]: tiers });
 });
 function renderTiers() {
   renderTierText();
-  $('tiers').innerHTML = cfg.tiers.map((t, i) => `<tr>
+  $('tiers').innerHTML = cfg[TK].map((t, i) => `<tr>
     <td><input type="number" min="1" data-i="${i}" data-k="coins" value="${t.coins}"></td>
     <td><input type="number" min="0" data-i="${i}" data-k="points" value="${t.points}"></td>
-    <td><select data-i="${i}" data-k="effect">${Object.entries(EFFECTS).map(([k, v]) => `<option value="${k}" ${t.effect === k ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
-    <td><input type="number" min="5" data-i="${i}" data-k="secs" value="${t.secs || ''}" ${t.effect === 'hang' ? '' : 'disabled'}></td>
+    <td><select data-i="${i}" data-k="effect">${Object.entries(EFX()).map(([k, v]) => `<option value="${k}" ${t.effect === k ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+    <td><input type="number" min="5" data-i="${i}" data-k="secs" value="${t.secs || ''}" ${t.effect === 'hang' || t.effect === 'fill' ? '' : 'disabled'}>${MODE === 'world' && t.effect === 'hang' ? `<select data-i="${i}" data-k="size"><option value="sm" ${t.size === 'sm' ? 'selected' : ''}>Vừa</option><option value="md" ${t.size === 'md' ? 'selected' : ''}>Trung</option><option value="lg" ${t.size === 'lg' ? 'selected' : ''}>Lớn</option></select>` : ''}</td>
     <td><input type="checkbox" data-i="${i}" data-k="fireworks" ${t.fireworks ? 'checked' : ''}></td>
     <td><button data-sfx="${i}" title="${t.sfx || 'Âm mặc định'}">${t.sfx ? '♪ ' + t.sfx.split(/[\\/]/).pop().slice(0, 14) : 'Mặc định'}</button>${t.sfx ? ` <button data-sfxclr="${i}" title="Dùng âm mặc định">×</button>` : ''}</td></tr>`).join('');
 }
 $('tiers').addEventListener('click', async e => {
   const b = e.target.closest('button'); if (!b) return;
-  const tiers = cfg.tiers.map(t => ({ ...t }));
+  const tiers = cfg[TK].map(t => ({ ...t }));
   if (b.dataset.sfx != null) { const f = await api.invoke('pick-file', 'sfx'); if (!f) return; tiers[+b.dataset.sfx].sfx = f; }
   else if (b.dataset.sfxclr != null) delete tiers[+b.dataset.sfxclr].sfx;
   else return;
-  set({ tiers }).then(renderTiers);
+  set({ [TK]: tiers }).then(renderTiers);
 });
 $('tiers').addEventListener('change', e => {
   const el = e.target; const i = +el.dataset.i, k = el.dataset.k; if (!k) return;
-  const tiers = cfg.tiers.map(t => ({ ...t }));
+  const tiers = cfg[TK].map(t => ({ ...t }));
   tiers[i][k] = el.type === 'checkbox' ? el.checked : el.tagName === 'SELECT' ? el.value : +el.value;
   if (k === 'effect' && el.value === 'hang') { tiers[i].secs ||= 30; tiers[i].size ||= 'md'; }
+  if (k === 'effect' && el.value === 'fill') { tiers[i].secs ||= 60; }
   if (k === 'fireworks') tiers[i].size = el.checked ? 'lg' : (tiers[i].size || 'md');
-  set({ tiers }).then(renderTiers);
+  set({ [TK]: tiers }).then(renderTiers);
 });
 
 // ── TikTok ──
@@ -181,7 +184,7 @@ $('simProv').innerHTML += init.provinces.map(p => `<option>${p.name}</option>`).
 $('simComment').onclick = () => api.invoke('simulate', { type: 'comment', province: $('simProv').value || null });
 $('simJoin').onclick = () => api.invoke('simulate', { type: 'join' });
 $('simBurst').onclick = () => { for (let i = 0; i < 10; i++) setTimeout(() => api.invoke('simulate', { type: 'comment' }), i * 250); };
-$('simGifts').innerHTML = cfg.tiers.map(t => `<button data-c="${t.coins}">Tặng ${t.coins} xu</button>`).join('');
+$('simGifts').innerHTML = cfg[TK].map(t => `<button data-c="${t.coins}">Tặng ${t.coins} xu</button>`).join('');
 $('simGifts').onclick = e => { const b = e.target.closest('button'); if (b) api.invoke('simulate', { type: 'gift', coins: +b.dataset.c, province: $('simProv').value || null }); };
 $('simNoProv').onclick = () => api.invoke('simulate', { type: 'gift', coins: 10, noProvince: true });
 

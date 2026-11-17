@@ -11,7 +11,7 @@ const CTX = globalThis.__vnlive;
 const { TikTokLiveConnection, WebcastEvent, ControlEvent } = CTX.tiktok;
 const ROOT = CTX.ROOT;            // thư mục gốc gói cài (asar)
 const res = rel => CTX.resolve(rel); // file thực tế: bản cập nhật nếu có, không thì bản gốc
-export const CORE_VERSION = '1.3.0';
+export const CORE_VERSION = '1.4.0';
 const UD = app.getPath('userData');
 const CFG_FILE = path.join(UD, 'config.json');
 // chế độ bản đồ: 'vn' (34 tỉnh) hoặc 'world' (thế giới) — đổi chế độ thì app tự khởi động lại
@@ -47,6 +47,13 @@ const DEFAULTS = {
     { coins: 10, points: 60, effect: 'glow' },
     { coins: 30, points: 200, effect: 'hang', size: 'md', secs: 30 },
     { coins: 100, points: 1000, effect: 'hang', size: 'lg', secs: 60, fireworks: true },
+  ],
+  // luật quà riêng cho bản đồ thế giới
+  tiersWorld: [
+    { coins: 1, points: 5, effect: 'hang', size: 'sm', secs: 60 },
+    { coins: 5, points: 25, effect: 'hang', size: 'md', secs: 300 },
+    { coins: 10, points: 60, effect: 'hang', size: 'lg', secs: 600 },
+    { coins: 50, points: 400, effect: 'fill', secs: 60 },
   ],
 };
 const readJSON = (f, d) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return d; } };
@@ -148,8 +155,9 @@ function normUser(u = {}) {
   const uid = String(u.uniqueId || u.displayId || u.username || u.userId || u.id || 'anon');
   return { uid, name: String(u.nickname || uid).trim() || uid, avatar: pickAvatar(u) };
 }
+const tiersOf = () => (WORLD ? (Array.isArray(cfg.tiersWorld) && cfg.tiersWorld.length ? cfg.tiersWorld : DEFAULTS.tiersWorld) : cfg.tiers);
 function tierFor(coins) {
-  const ts = [...cfg.tiers].sort((a, b) => a.coins - b.coins);
+  const ts = [...tiersOf()].sort((a, b) => a.coins - b.coins);
   let t = ts[0];
   for (const x of ts) if (coins >= x.coins) t = x;
   const points = Math.max(1, Math.round(coins * t.points / t.coins));
@@ -205,7 +213,7 @@ function sfxFor(t) {
   return `../assets/sfx/${name}.wav`;
 }
 function stageCfg() {
-  const t = WORLD ? { title: cfg.titleWorld || 'BẢN ĐỒ THẾ GIỚI', subtitle: cfg.subtitleWorld || 'Comment tên nước của bạn để ghi điểm!', chip: 'THẾ GIỚI' } : {};
+  const t = WORLD ? { title: cfg.titleWorld || 'WORLD MAP', subtitle: cfg.subtitleWorld || 'Comment your country to score!', chip: 'WORLD', tiers: tiersOf(), tierTitle: cfg.tierTitleWorld || 'GIFTS', playerBoardTitle: cfg.playerBoardTitleWorld || 'TOP PLAYERS' } : {};
   return { ...cfg, ...t, bgmList: bgmList(), version: CTX.version, mode: MODE };
 }
 
@@ -243,7 +251,17 @@ function handleComment(user, text) {
   }
   if (now - (lastShow.get(u.uid) || 0) < cfg.showCooldownSec * 1000) return;
   lastShow.set(u.uid, now);
+  if (WORLD) return worldComment(u, p, text, pts);
   greetBuf.add({ u, p, text, pts });
+}
+// Bản đồ thế giới: comment không zoom — chỉ hiện avatar nhỏ + tên trên nước đó rồi biến mất; lời chào đọc khi rảnh
+let lastWorldGreet = 0;
+function worldComment(u, p, text, pts) {
+  toStage('pop', { user: u, province: p.name, points: pts, text });
+  const now = Date.now();
+  if (!cfg.voiceComments || tts.q.length > 1 || now - lastWorldGreet < 2500) return;
+  lastWorldGreet = now;
+  tts.say(greetLine(u, p, text), 0, 'greet');
 }
 
 // ── hàng chờ chào: không bỏ sót ai; đông người thì gộp nhiều người vào 1 lượt chào ──
@@ -305,6 +323,7 @@ const recentProv = []; const toldRecent = [];
 function noteProv(name) { const i = recentProv.indexOf(name); if (i >= 0) recentProv.splice(i, 1); recentProv.unshift(name); recentProv.length = Math.min(recentProv.length, 8); }
 function splitSentences(t) { return String(t).replace(/\s+/g, ' ').trim().split(/(?<=[.!?…])\s+/).filter(x => x.length > 1); }
 function tellStory(force) {
+  if (WORLD) return false; // bản đồ thế giới (tiếng Anh): không kể truyện dân gian Việt Nam
   if (!cfg.storyEnabled && !force) return false;
   const types = cfg.storyTypes || {};
   const ok = st => st && st.text && types[st.type] !== false;
@@ -342,6 +361,14 @@ function handleJoin(user) {
   joined.set(u.uid, now); if (joined.size > 5000) joined.clear();
   const known = users[u.uid] && byName[users[u.uid].p] ? byName[users[u.uid].p] : null;
   if (cfg.joinBanner) toStage('join', { name: u.name, avatar: u.avatar, province: known?.name || null });
+  if (WORLD) { // bản đồ thế giới: chào bằng tiếng Anh
+    if (!cfg.voiceComments || !cfg.joinVoice || tts.q.length || now - lastJoinVoice < cfg.joinVoiceGapSec * 1000) return;
+    lastJoinVoice = now;
+    const Wg = greetings.world || {};
+    const line = known ? pick(Wg.join_back) : pick(Wg.join);
+    if (line) tts.say(fill(line, { ten: ttsName(u.name), nuoc: known?.en || '', hello: known ? (HELLO[known.a3] || 'Hello') : 'Hello' }), -1, 'join');
+    return;
+  }
   toPanel('feed', { kind: 'join', name: u.name, text: 'vừa vào live', province: known?.name || null });
   // giọng chào: chỉ khi không có ai đang chờ đọc, cách nhau ít nhất joinVoiceGapSec
   if (!cfg.voiceComments || !cfg.joinVoice || tts.q.length || now - lastJoinVoice < cfg.joinVoiceGapSec * 1000) return;
@@ -363,7 +390,7 @@ function handleGift(user, coins, giftName, giftImg) {
   // chưa biết tỉnh: giữ quà 10 phút chờ comment tên tỉnh
   const arr = pendingGifts.get(u.uid) || []; arr.push(g); pendingGifts.set(u.uid, arr);
   setTimeout(() => { const a = pendingGifts.get(u.uid); if (a) { const r = a.filter(x => x !== g); r.length ? pendingGifts.set(u.uid, r) : pendingGifts.delete(u.uid); } }, 10 * 60e3);
-  const ttsId = tts.say(fill(pick(greetings.generic?.ask_province), { ten: ttsName(u.name), xu: coins, diem: points }), 5 + coins, 'show');
+  const ttsId = tts.say(fill(pick(WORLD ? greetings.world?.ask : greetings.generic?.ask_province), { ten: ttsName(u.name), xu: coins, diem: points }), 5 + coins, 'show');
   toStage('show', { id: evSeq++, kind: 'gift-ask', prio: 5 + coins, user: u, coins, points, giftName, giftImg, tier, ttsId });
   log(`🎁 ${u.name} tặng ${coins} xu nhưng chưa có tỉnh — chờ comment tên tỉnh`);
 }
@@ -371,7 +398,7 @@ function handleGift(user, coins, giftName, giftImg) {
 function applyGift(u, p, g, text, late) {
   scores[p.name] += g.points; pushScores([p.name]); addPlayer(u, p.name, g.points);
   users[u.uid] = { p: p.name, t: Date.now() }; saveUsers();
-  const t = g.tier; const key = t.fireworks ? 'mega' : (t.effect || 'zoom');
+  const t = g.tier; const key = t.fireworks || t.effect === 'fill' ? 'mega' : (t.effect || 'zoom');
   const vars = { ten: ttsName(u.name), tinh: p.spoken, xu: g.coins, diem: g.points, tong: scores[p.name] };
   // câu ngắn: cảm ơn theo tỉnh + điểm; chúc mừng chỉ cho quà lớn
   let parts;
@@ -383,7 +410,8 @@ function applyGift(u, p, g, text, late) {
     if (key === 'hang' || key === 'mega') parts.push(pick(provVoice(p, 'cheer')));
   }
   const ttsId = tts.say(fill(parts.filter(Boolean).join(' '), vars), 10 + g.coins, 'show');
-  toStage('show', { id: evSeq++, kind: 'gift', prio: 10 + g.coins, user: u, text, province: p.name, provinceId: p.id, coins: g.coins, points: g.points, total: scores[p.name], tier: t, giftName: g.giftName, giftImg: g.giftImg, ttsId, sfx: sfxFor(t) });
+  if (WORLD && t.effect === 'fill' && u.avatar) prefetchImage(u.avatar);
+  toStage('show', { id: evSeq++, kind: 'gift', prio: 10 + g.coins, user: u, text, province: p.name, provinceId: p.id, iso2: p.iso2, coins: g.coins, points: g.points, total: scores[p.name], tier: t, giftName: g.giftName, giftImg: g.giftImg, ttsId, sfx: sfxFor(t) });
   log(`🎁 ${u.name} → ${p.name}: ${g.coins} xu = +${g.points} điểm (${key})`);
 }
 
@@ -587,6 +615,19 @@ ipcMain.handle('tts', async (e, a) => {
 ipcMain.on('tts-done', () => tts.done());
 ipcMain.on('tts-cancel', (e, id) => tts.cancel(id));
 ipcMain.on('story-idle', () => tellStory(false));
+// tải ảnh avatar qua tiến trình chính (tránh lỗi CORS khi dùng làm texture 3D)
+const imgCache = new Map();
+async function prefetchImage(url) {
+  if (!url || imgCache.has(url)) return imgCache.get(url);
+  const pr = (async () => {
+    if (url.startsWith('data:')) return url;
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000) }); if (!r.ok) throw new Error('HTTP ' + r.status);
+    const b = Buffer.from(await r.arrayBuffer()); return 'data:' + (r.headers.get('content-type') || 'image/jpeg') + ';base64,' + b.toString('base64');
+  })().catch(() => null);
+  imgCache.set(url, pr); if (imgCache.size > 300) imgCache.delete(imgCache.keys().next().value);
+  return pr;
+}
+ipcMain.handle('img', (e, url) => prefetchImage(url));
 ipcMain.handle('set-mode', (e, m) => {
   if (m !== 'world' && m !== 'vn') return;
   cfg.mapMode = m; saveCfg(); writeJSON(SCORE_FILE, scores); writeJSON(PLAYERS_FILE, players);
@@ -639,16 +680,16 @@ async function selfTest(dir) {
   const shot = async (w, n) => { try { const img = await w.webContents.capturePage(); fs.writeFileSync(path.join(dir, n + '.png'), img.toPNG()); } catch (e) { console.log('shot fail', e.message); } };
   if (process.env.VNLIVE_WORLDTEST) {
     const wait = ms => new Promise(r => setTimeout(r, ms));
-    cfg.storyEnabled = false; cfg.joinVoice = false; await wait(9000);
-    await shot(stageWin, 'w0');
-    const L = await stageWin.webContents.executeJavaScript('window.__log.slice(-3).join("|")');
-    handleComment(fakeUser('John'), 'hello from USA'); await wait(3200); await shot(stageWin, 'w1'); console.log('LOG1 ' + (await stageWin.webContents.executeJavaScript('window.__log.slice(-12).join(" | ")')));
-    handleComment(fakeUser('Minh Anh'), 'em ở Đà Lạt'); await wait(4200); await shot(stageWin, 'w2');
-    const g = fakeUser('Yuki'); handleComment(g, 'Japan'); await wait(300); handleGift(g, 30, 'Quà', ''); await wait(9000); await shot(stageWin, 'w3');
-    for (const [n, t] of [['Kim', 'Hàn Quốc'], ['Somchai', 'Thái Lan'], ['Pierre', 'France'], ['Ana', 'Brazil'], ['Lan', 'Hà Nội']]) handleComment(fakeUser(n), t);
-    await wait(12000); await shot(stageWin, 'w4'); await shot(panelWin, 'wp');
-    const v = await stageWin.webContents.executeJavaScript('(window.__voices||[]).map(x=>x.text).join("\\n")');
-    console.log('WORLD voices\n' + v + '\nscores ' + JSON.stringify(standings().filter(r => r.score).slice(0, 10)));
+    cfg.joinVoice = false; await wait(9000);
+    await shot(stageWin, 'p0'); await wait(8000); await shot(stageWin, 'p1');
+    for (const [n, t] of [['John', 'hello from USA'], ['Minh Anh', 'Việt Nam'], ['Kim', 'Korea'], ['Ana', 'Brazil'], ['Lan', 'Hà Nội'], ['Yuki', 'Japan'], ['Raj', 'India']]) handleComment(fakeUser(n), t);
+    await wait(1200); await shot(stageWin, 'p2');
+    const gift = async (name, country, coins, tag, w1 = 3500, w2 = 6000) => { const u = fakeUser(name); handleComment(u, country); await wait(200); handleGift(u, coins, 'Rose', ''); await wait(w1); await shot(stageWin, tag + 'a'); await wait(w2); await shot(stageWin, tag + 'b'); };
+    await gift('Ivan', 'Russia', 10, 'g10', 2600, 1500);
+    await gift('Lan', 'Việt Nam', 50, 'g50', 2600, 4500);
+    await gift('Kim', 'Korea', 5, 'g5', 2600, 1000);
+    await wait(8000); await shot(stageWin, 'after');
+    console.log('WORLD scores ' + JSON.stringify(standings().filter(r => r.score).slice(0, 10)));
     return app.quit();
   }
   if (process.env.VNLIVE_GROUPTEST) {

@@ -33,6 +33,22 @@ addEventListener('resize', fit); fit();
 const MODE = new URLSearchParams(location.search).get('mode') === 'world' ? 'world' : 'vn';
 const WORLD = MODE === 'world';
 let lblLevel = -1, lblDirty = true;
+const LOC = WORLD ? 'en-US' : 'vi-VN';
+const fmt = n => Number(n || 0).toLocaleString(LOC);
+// chữ trên màn hình live: bản đồ thế giới dùng tiếng Anh
+const TX = WORLD ? {
+  board: 'LEADERBOARD', empty: 'Comment your country to get on the board!', gifts: 'GIFTS', players: 'TOP PLAYERS',
+  coin: n => n + (n > 1 ? ' coins' : ' coin'), gave: (g, c) => `Sent ${g || 'a gift'} · ${c} coin${c > 1 ? 's' : ''}`, ptsFor: (p, n) => `+${fmt(p)} points for ${n}!`,
+  ask: p => `Comment your country to get +${p} points!`, welcome: 'WELCOME', joinNew: 'Comment your country to score!', joinBack: '{tinh} is back!', joined: 'joined the live 👋',
+  hang: t => `Avatar on map ${Math.round((t.secs || 60) / 60)} min`, fill: t => `Avatar covers country ${Math.round((t.secs || 60) / 60)} min`, zoom: 'Zoom on avatar', glow: 'Glowing avatar', fw: 'fireworks',
+} : {
+  board: 'BẢNG XẾP HẠNG', empty: 'Comment tên tỉnh để lên bảng!', gifts: 'TẶNG QUÀ', players: 'TOP NGƯỜI CHƠI',
+  coin: n => n + ' xu', gave: (g, c) => `Tặng ${g || 'quà'} · ${c} xu`, ptsFor: (p, n) => `+${fmt(p)} điểm cho ${n}!`,
+  ask: p => `Comment tên tỉnh để nhận +${p} điểm!`, welcome: 'CHÀO MỪNG', joinNew: 'Comment tên tỉnh để ghi điểm!', joinBack: 'người {tinh} quay lại', joined: 'vừa vào live 👋',
+  hang: t => `Treo avatar ${t.secs || 30}s`, fill: t => `Avatar phủ kín ${t.secs || 60}s`, zoom: 'Zoom cận avatar', glow: 'Avatar tỏa sáng', fw: 'pháo hoa',
+};
+const mapGroup = new THREE.Group();   // mọi thứ thuộc bản đồ (để nhân bản liền mạch ở chế độ thế giới)
+let WD = 0;                            // bề rộng 1 vòng trái đất (chế độ thế giới)
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x08202e);
 scene.fog = WORLD ? new THREE.Fog(0x08202e, 4800, 9500) : new THREE.Fog(0x08202e, 420, 900);
@@ -60,7 +76,7 @@ const hY = h => LAND + h / 1000 * EX / UNIT;
   for (let lon = lo0; lon <= lo1; lon += st) { const a = ll(lon, la0), b = ll(lon, la1); pts.push(a[0], 0, a[1], b[0], 0, b[1]); }
   for (let lat = la0; lat <= la1; lat += st) { const a = ll(lo0, lat), b = ll(lo1, lat); pts.push(a[0], 0, a[1], b[0], 0, b[1]); }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-  scene.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0x5f8da3, transparent: true, opacity: 0.18 })));
+  mapGroup.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0x5f8da3, transparent: true, opacity: 0.18 })));
 }
 
 // tỉnh
@@ -79,6 +95,10 @@ gltf.scene.traverse(o => {
     for (let i = 0; i < ca.count; i++) { f[i * 3] = ca.getX(i); f[i * 3 + 1] = ca.getY(i); f[i * 3 + 2] = ca.getZ(i); }
     o.geometry.setAttribute('color', new THREE.BufferAttribute(f, 3));
   }
+  if (WORLD && m.recolor) { // Việt Nam tô màu như các nước khác
+    const c = o.geometry.attributes.color.array, k = [m.recolor[0] / 0.98, m.recolor[1] / 0.62, m.recolor[2] / 0.36];
+    for (let i = 0; i < c.length; i += 3) { c[i] = Math.min(1, c[i] * k[0]); c[i + 1] = Math.min(1, c[i + 1] * k[1]); c[i + 2] = Math.min(1, c[i + 2] * k[2]); }
+  }
   o.material = new THREE.MeshStandardMaterial({ vertexColors: !!o.geometry.attributes.color, roughness: 0.9, metalness: 0, emissive: 0xffc23a, emissiveIntensity: 0 });
   if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
   o.geometry.computeBoundingBox();
@@ -89,11 +109,11 @@ gltf.scene.traverse(o => {
   const anchor = new THREE.Vector3(m.label[0], hY(m.label[2]), m.label[1]);
   prov[m.name] = { mesh: o, meta: m, anchor, dist };
 });
-scene.add(gltf.scene);
+mapGroup.add(gltf.scene);
 
 // ranh giới
 const lineMats = [];
-for (const [ext, w, color] of [[0, 1.6, 0xffffff], [1, 1.3, 0x0a1a24], [2, 0.8, 0xfff2d0]]) {
+for (const [ext, w, color] of (WORLD ? [[0, 1.4, 0xffffff], [1, 1.2, 0x0a1a24]] : [[0, 1.6, 0xffffff], [1, 1.3, 0x0a1a24], [2, 0.8, 0xfff2d0]])) {
   const arr = [];
   for (const L of data.lines) {
     if (L.e !== ext) continue; const p = L.p;
@@ -102,11 +122,11 @@ for (const [ext, w, color] of [[0, 1.6, 0xffffff], [1, 1.3, 0x0a1a24], [2, 0.8, 
   const g = new LineSegmentsGeometry(); g.setPositions(arr);
   if (!arr.length) continue;
   const m = new LineMaterial({ color, linewidth: w, transparent: true, opacity: ext === 2 ? 0.45 : ext ? 0.9 : 0.85 }); m.resolution.set(W, H); lineMats.push(m);
-  scene.add(new LineSegments2(g, m));
+  mapGroup.add(new LineSegments2(g, m));
 }
 
 // nhãn
-function css2d(html, cls, pos) { const d = document.createElement('div'); const inner = document.createElement('div'); inner.className = cls; inner.innerHTML = html; d.appendChild(inner); const o = new CSS2DObject(d); o.inner = inner; o.position.copy(pos); scene.add(o); return o; }
+function css2d(html, cls, pos) { const d = document.createElement('div'); const inner = document.createElement('div'); inner.className = cls; inner.innerHTML = html; d.appendChild(inner); const o = new CSS2DObject(d); o.inner = inner; o.position.copy(pos); o.userData.bx = pos.x; scene.add(o); return o; }
 for (const name in prov) {
   const P = prov[name];
   const o = css2d(`<span class="n">${name}</span><span class="s" hidden>0</span>`, 'pl', P.anchor.clone().add(new THREE.Vector3(0, 0.5, 0)));
@@ -117,17 +137,21 @@ for (const name in prov) {
 for (const pl of data.places) {
   const sub = WORLD ? 'Việt Nam' : pl.name.startsWith('Quần đảo') ? (pl.prov === 'Đà Nẵng' ? 'TP. Đà Nẵng' : 'Khánh Hòa') : pl.prov;
   const dz = pl.name.startsWith('Quần đảo') ? -pl.h / 2 - 3 : 3.2;
-  css2d(`${pl.name}<small>${sub}</small>`, 'plc', new THREE.Vector3(pl.c[0] + (pl.name === 'Đảo Phú Quốc' ? -6 : 0), 0.5, pl.c[1] + dz));
+  css2d(WORLD ? `${(data.placesEn || {})[pl.name] || pl.name}<small>(Vietnam)</small>` : `${pl.name}<small>${sub}</small>`, WORLD ? 'plc w' : 'plc', new THREE.Vector3(pl.c[0] + (pl.name === 'Đảo Phú Quốc' ? -6 : 0), 0.5, pl.c[1] + dz));
   if (pl.name.startsWith('Quần đảo')) {
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pl.pts.flatMap(([x, z]) => [x, LAND + 0.05, z]), 3));
-    scene.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 4, sizeAttenuation: false, color: 0xffd34a })));
+    mapGroup.add(new THREE.Points(g, new THREE.PointsMaterial({ size: WORLD ? 2.5 : 4, sizeAttenuation: false, color: WORLD ? 0x6a5a8c : 0xffd34a })));
     const pad = 1.8, x0 = pl.c[0] - pl.w / 2 - pad, x1 = pl.c[0] + pl.w / 2 + pad, z0 = pl.c[1] - pl.h / 2 - pad, z1 = pl.c[1] + pl.h / 2 + pad;
     const fg = new THREE.BufferGeometry().setFromPoints([[x0, z0], [x1, z0], [x1, z1], [x0, z1], [x0, z0]].map(([x, z]) => new THREE.Vector3(x, 0.03, z)));
-    const fl = new THREE.Line(fg, new THREE.LineDashedMaterial({ color: 0xffd34a, dashSize: 1.4, gapSize: 1, transparent: true, opacity: 0.7 })); fl.computeLineDistances(); scene.add(fl);
+    const fl = new THREE.Line(fg, new THREE.LineDashedMaterial({ color: 0xffd34a, dashSize: 1.4, gapSize: 1, transparent: true, opacity: 0.7 })); fl.computeLineDistances(); if (!WORLD) mapGroup.add(fl);
   }
 }
-if (WORLD) for (const [n, x, z] of data.seas) css2d(n, 'seaL', new THREE.Vector3(x, 0, z));
+if (WORLD) for (const [n, x, z] of (data.seasEn || data.seas)) css2d(n, 'seaL', new THREE.Vector3(x, 0, z));
 else { const p = ll(112.6, 14.2); css2d('BIỂN ĐÔNG', 'seaL', new THREE.Vector3(p[0], 0, p[1])); }
+scene.add(mapGroup);
+// bản đồ thế giới nối liền: nhân bản sang trái/phải 1 vòng để camera chạy mãi không hết
+if (WORLD) { WD = 360 * KX; for (const k of [-1, 1]) { const c = mapGroup.clone(); c.position.x = k * WD; scene.add(c); } }
+const wrapX = bx => (WD ? bx + Math.round((camT.x - bx) / WD) * WD : bx);
 
 // ── camera ──
 const HOME = WORLD ? { t: new THREE.Vector3(...data.home.t), p: new THREE.Vector3(...data.home.p) } : { t: new THREE.Vector3(10, 0, -19), p: new THREE.Vector3(10, 404, 128) };
@@ -136,26 +160,30 @@ const camT = HOME.t.clone();
 let fl = null, atHome = true;
 const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 function flyTo(target, pos, dur = 1400) { fl = { t0: performance.now(), dur, ft: camT.clone(), fp: camera.position.clone(), tt: target.clone(), tp: pos.clone() }; }
-let homeT0 = performance.now() - Math.asin(0.3) / 0.025 * 1000; // bắt đầu ở châu Á
-function goHome(dur = 2200) { atHome = true; if (WORLD) { const x = camT.x; } flyTo(homeAt(), homePos(), dur); }
-function homeAt() { if (!WORLD) return HOME.t; const dx = Math.sin((performance.now() + 2200 - homeT0) / 1000 * 0.025) * 1250; return new THREE.Vector3(HOME.t.x - 350 + dx, 0, HOME.t.z); }
-function homePos() { const t = homeAt(); return WORLD ? new THREE.Vector3(t.x, HOME.p.y, HOME.p.z) : HOME.p; }
+// bản đồ thế giới: camera lia liên tục về phía đông, vòng quanh trái đất
+const PAN_OFF = WORLD ? HOME.p.clone().sub(HOME.t) : null;
+const panZ = () => HOME.t.z + Math.sin(performance.now() / 1000 * 0.05) * 90;
+function goHome(dur = 2200) {
+  if (!WORLD) { atHome = true; flyTo(HOME.t, HOME.p, dur); return; }
+  atHome = false; const t = new THREE.Vector3(camT.x + (cfg.panSpeed ?? 28) * dur / 1000, 0, panZ());
+  flyTo(t, t.clone().add(PAN_OFF), dur); fl.thenHome = true;
+}
 function viewOf(anchor, dist) { return { t: anchor.clone(), p: new THREE.Vector3(anchor.x + dist * 0.06, anchor.y + dist * 0.95, anchor.z + dist * 0.62) }; }
 
 // ── bảng xếp hạng / bậc donate ──
 function renderTiers() {
-  const desc = t => t.fireworks ? `Avatar to ${t.secs || 60}s + pháo hoa` : t.effect === 'hang' ? `Treo avatar ${t.secs || 30}s` : t.effect === 'glow' ? 'Avatar tỏa sáng' : 'Zoom cận avatar';
+  const desc = t => t.effect === 'fill' ? TX.fill(t) : t.fireworks ? (WORLD ? TX.hang(t) : `Avatar to ${t.secs || 60}s`) + ' + ' + TX.fw : t.effect === 'hang' ? TX.hang(t) : t.effect === 'glow' ? TX.glow : TX.zoom;
   $('tiers').hidden = cfg.showTierBoard === false;
-  $('tiers').innerHTML = `<h3>${esc(cfg.tierTitle || 'TẶNG QUÀ')}</h3>` + [...cfg.tiers].sort((a, b) => a.coins - b.coins)
-    .map(t => `<div><span>${esc(t.coinText || t.coins + ' xu')}<small>${esc(t.label ?? desc(t))}</small></span><b>${esc(t.pointText || '+' + t.points)}</b></div>`).join('');
+  $('tiers').innerHTML = `<h3>${esc(cfg.tierTitle || TX.gifts)}</h3>` + [...cfg.tiers].sort((a, b) => a.coins - b.coins)
+    .map(t => `<div><span>${esc(t.coinText || TX.coin(t.coins))}<small>${esc(t.label ?? desc(t))}</small></span><b>${esc(t.pointText || '+' + t.points)}</b></div>`).join('');
 }
 let lastTop = [];
 function renderBoard(list, changed = []) {
   const top = (WORLD ? list.filter(r => r.score > 0) : list).slice(0, 5); const max = Math.max(1, top[0]?.score || 1);
-  $('rows').innerHTML = top.map((r, i) => `<div class="row${changed.includes(r.name) ? ' flash' : ''}"><span class="rk">${i + 1}</span><span class="nm">${r.name}</span><span class="sc">${r.score.toLocaleString('vi-VN')}</span><span class="bar"><i style="width:${(r.score / max * 100).toFixed(1)}%"></i></span></div>`).join('');
-  if (!top.length) $('rows').innerHTML = '<div class="row" style="grid-template-columns:1fr;font-size:22px;color:var(--ink-2)">Comment tên nước để lên bảng!</div>';
+  $('rows').innerHTML = top.map((r, i) => `<div class="row${changed.includes(r.name) ? ' flash' : ''}"><span class="rk">${i + 1}</span><span class="nm">${r.name}</span><span class="sc">${r.score.toLocaleString(LOC)}</span><span class="bar"><i style="width:${(r.score / max * 100).toFixed(1)}%"></i></span></div>`).join('');
+  if (!top.length) $('rows').innerHTML = `<div class="row" style="grid-template-columns:1fr;font-size:22px;color:var(--ink-2)">${TX.empty}</div>`;
   lblDirty = true;
-  for (const r of list) { const P = prov[r.name]; if (!P) continue; P.score = r.score; P.scoreEl.hidden = !r.score; P.scoreEl.textContent = r.score.toLocaleString('vi-VN'); }
+  for (const r of list) { const P = prov[r.name]; if (!P) continue; P.score = r.score; P.scoreEl.hidden = !r.score; P.scoreEl.textContent = r.score.toLocaleString(LOC); }
   lastTop = top;
 }
 
@@ -168,6 +196,62 @@ function pushChat(d) {
   t.appendChild(div); while (t.children.length > 5) t.firstChild.remove();
 }
 
+// ── lớp phủ trên nước: lá cờ / avatar phủ kín (chế độ thế giới) ──
+const overlays = []; const topIdx = new Map();
+function topIndex(P) { // chỉ lấy các tam giác mặt trên của nước (bỏ thành bên)
+  if (topIdx.has(P.meta.id)) return topIdx.get(P.meta.id);
+  const g = P.mesh.geometry, y = g.attributes.position, ix = g.index; const out = [];
+  const n = ix ? ix.count : y.count, at = k => (ix ? ix.getX(k) : k);
+  for (let k = 0; k < n; k += 3) { const a = at(k), b = at(k + 1), c = at(k + 2); if (y.getY(a) >= LAND - 1e-3 && y.getY(b) >= LAND - 1e-3 && y.getY(c) >= LAND - 1e-3) out.push(a, b, c); }
+  topIdx.set(P.meta.id, out); return out;
+}
+function loadTexture(src, w, h) {
+  return new Promise(res => {
+    const img = new Image(); img.crossOrigin = 'anonymous';
+    img.onload = () => { const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d');
+      const s = Math.max(w / img.width, h / img.height); x.drawImage(img, (w - img.width * s) / 2, (h - img.height * s) / 2, img.width * s, img.height * s);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; res(t); };
+    img.onerror = () => res(null); img.src = src;
+  });
+}
+async function addOverlay(P, kind, src, ms) {
+  const mb = P.meta.mb; if (!mb || !src) return;
+  const tex = kind === 'flag' ? await loadTexture(src, 800, 600) : await loadTexture(src, 512, 512);
+  if (!tex) return;
+  const ia = kind === 'flag' ? 4 / 3 : 1; // tỉ lệ ảnh; phủ kín khung nước nhưng giữ đúng tỉ lệ
+  const x0 = mb[0], z0 = mb[1], bw = mb[2] - mb[0], bh = mb[3] - mb[1];
+  let uw = bw, uh = bh; if (kind !== 'flag') { if (bw / bh > ia) uh = bw / ia; else uw = bh * ia; } // cờ: trải kín cả nước; avatar: giữ tỉ lệ
+  const cx = x0 + bw / 2, cz = z0 + bh / 2;
+  const src2 = P.mesh.geometry.attributes.position, uv = new Float32Array(src2.count * 2);
+  for (let i = 0; i < src2.count; i++) { uv[i * 2] = (src2.getX(i) - cx) / uw + 0.5; uv[i * 2 + 1] = 0.5 - (src2.getZ(i) - cz) / uh; }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', src2); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.setIndex(topIndex(P));
+  const m = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4, toneMapped: false });
+  const mesh = new THREE.Mesh(g, m); mesh.renderOrder = 3; mesh.position.y = 0.03; scene.add(mesh);
+  const now = performance.now();
+  overlays.push({ mesh, cx, kind, t0: now, end: now + ms, max: kind === 'flag' ? 0.92 : 1, province: P.meta.name });
+}
+function overlayTick(now) {
+  for (let i = overlays.length - 1; i >= 0; i--) {
+    const o = overlays[i]; const a = Math.min(1, (now - o.t0) / 700), b = Math.min(1, (o.end - now) / 900);
+    o.mesh.material.opacity = Math.max(0, Math.min(a, b)) * o.max;
+    if (o.kind === 'flag') o.mesh.material.map.offset.x = Math.sin((now - o.t0) / 600) * 0.012; // lá cờ phấp phới nhẹ
+    if (now >= o.end) { scene.remove(o.mesh); o.mesh.material.map?.dispose(); o.mesh.material.dispose(); o.mesh.geometry.dispose(); overlays.splice(i, 1); }
+  }
+}
+// comment ở chế độ thế giới: avatar nhỏ + tên hiện trên nước rồi biến mất
+const pops = [];
+on('pop', d => {
+  const P = prov[d.province]; if (!P) return;
+  const near = pops.filter(x => x.province === d.province).length;
+  const S = 14;
+  const pos = P.anchor.clone().add(new THREE.Vector3(((near % 3) - 1) * S, 0.5, -Math.floor(near / 3) * S));
+  const o = css2d(`${imgTag(d.user.avatar, 'av')}<b>${esc(d.user.name)}</b>${d.points ? '<i>+1</i>' : ''}`, 'pop', pos);
+  o.center.set(0.5, 1);
+  pops.push({ o, province: d.province, end: performance.now() + 4500 });
+  while (pops.length > 30) { const x = pops.shift(); scene.remove(x.o); x.o.element.remove(); }
+});
+function popTick(now) { for (let i = pops.length - 1; i >= 0; i--) if (now >= pops[i].end) { const x = pops[i]; scene.remove(x.o); x.o.element.remove(); pops.splice(i, 1); } }
+
 // ── hiển thị sự kiện ──
 let queue = [], cur = null, curTimer = null, homeTimer = null, marker = null;
 const hangs = [];
@@ -175,9 +259,9 @@ function card(ev) {
   const c = $('card'); c.className = 'card on' + (ev.kind !== 'comment' ? ' gift' : '') + (ev.tier?.effect === 'glow' || ev.tier?.fireworks ? ' glow' : '');
   $('cAv').src = ev.user?.avatar || STORY_ICON; $('cAv').referrerPolicy = 'no-referrer';
   $('cN').textContent = ev.user?.name || '';
-  if (ev.kind === 'comment') { $('cC').textContent = ev.text; $('cR').textContent = ev.points ? `+${ev.points} điểm cho ${ev.province} · tổng ${ev.total.toLocaleString('vi-VN')}` : `${ev.province} · ${ev.total.toLocaleString('vi-VN')} điểm`; }
-  else if (ev.kind === 'gift') { $('cC').textContent = `Tặng ${ev.giftName || 'quà'} · ${ev.coins} xu` + (ev.text ? ` — “${ev.text}”` : ''); $('cR').textContent = `+${ev.points.toLocaleString('vi-VN')} điểm cho ${ev.province}!`; }
-  else { $('cC').textContent = `Tặng ${ev.giftName || 'quà'} · ${ev.coins} xu`; $('cR').textContent = `Comment tên tỉnh để nhận +${ev.points} điểm!`; }
+  if (ev.kind === 'comment') { $('cC').textContent = ev.text; $('cR').textContent = ev.points ? `+${ev.points} điểm cho ${ev.province} · tổng ${ev.total.toLocaleString(LOC)}` : `${ev.province} · ${ev.total.toLocaleString(LOC)} điểm`; }
+  else if (ev.kind === 'gift') { $('cC').textContent = TX.gave(ev.giftName, ev.coins) + (ev.text ? ` — “${ev.text}”` : ''); $('cR').textContent = TX.ptsFor(ev.points, ev.province); }
+  else { $('cC').textContent = TX.gave(ev.giftName, ev.coins); $('cR').textContent = TX.ask(ev.points); }
   $('cG').hidden = !ev.giftImg; if (ev.giftImg) $('cG').src = ev.giftImg;
   if (ev.kind === 'group') {
     c.className = 'card on group';
@@ -200,7 +284,7 @@ function highlight(name, on) { const P = prov[name]; if (!P) return; P.hl = on ?
 
 function makeMarker(ev, cls) {
   const P = prov[ev.province];
-  const html = `${cls.includes('glow') ? '<div class="rays"></div>' : ''}${ev.kind === 'gift' ? `<div class="pts">+${ev.points.toLocaleString('vi-VN')}</div>` : ev.points ? '<div class="pts">+1</div>' : ''}
+  const html = `${cls.includes('glow') ? '<div class="rays"></div>' : ''}${ev.kind === 'gift' ? `<div class="pts">+${ev.points.toLocaleString(LOC)}</div>` : ev.points ? '<div class="pts">+1</div>' : ''}
     ${imgTag(ev.user.avatar, 'av')}<div class="nm">${esc(ev.user.name)}</div>${ev.text ? `<div class="cm">${esc(ev.text)}</div>` : ''}<div class="pin"></div>`;
   const o = css2d(html, 'mk ' + cls, P.anchor.clone());
   o.center.set(0.5, 1); return o;
@@ -208,7 +292,8 @@ function makeMarker(ev, cls) {
 function addHang(ev) {
   const P = prov[ev.province]; const t = ev.tier; const size = t.size || (t.fireworks ? 'lg' : 'md'); const secs = t.secs || (size === 'lg' ? 60 : 30);
   const same = hangs.filter(h => h.province === ev.province).length;
-  const pos = P.anchor.clone().add(new THREE.Vector3((same % 3 - 1) * (same ? 4 : 0), 0.3, -Math.floor(same / 3) * 3));
+  const S = WORLD ? 16 : 4;
+  const pos = P.anchor.clone().add(new THREE.Vector3((same % 3 - 1) * (same ? S : 0), 0.3, -Math.floor(same / 3) * S * 0.8));
   const o = css2d(`${size === 'lg' ? '<div class="crown">👑</div>' : ''}<div class="ring"><div class="rays"></div>${imgTag(ev.user.avatar)}</div><div class="nm">${esc(ev.user.name)}</div><div class="str"></div>`, 'hang ' + size, pos);
   o.center.set(0.5, 1);
   const h = { o, province: ev.province, end: performance.now() + secs * 1000, secs, ring: o.inner.querySelector('.ring') };
@@ -280,10 +365,27 @@ function play(ev) {
       dur = Math.max(2000, ((cfg.commentHoldSec || 4) - queue.length * 0.35) * 1000) + 900;
       if (ev.voice.length) dur = Math.min(dur, 2600); // có giọng chào thì chờ đọc xong là chính
     } else {
-      const t = ev.tier || {}; const close = t.fireworks ? 19 : t.effect === 'hang' ? 17 : 13;
+      const t = ev.tier || {};
+      if (WORLD) { // zoom thấy trọn nước + lá cờ hiện trên nước đó
+        const mb = P.meta.mb || [P.anchor.x - 40, P.anchor.z - 40, P.anchor.x + 40, P.anchor.z + 40];
+        const bw = mb[2] - mb[0], bh = mb[3] - mb[1];
+        const c = new THREE.Vector3(wrapX((mb[0] + mb[2]) / 2), LAND, (mb[1] + mb[3]) / 2);
+        const tv = Math.tan(THREE.MathUtils.degToRad(17)), th = tv * W / H;
+        const d = THREE.MathUtils.clamp(Math.max(bw / 2 / th * 1.25, bh / 2 / tv * 2.1), 70, 9000);
+        const v = viewOf(c, d); atHome = false; flyTo(v.t, v.p, 1800);
+        const fill = t.effect === 'fill' && ev.user?.avatar;
+        if (ev.iso2) addOverlay(P, 'flag', `../assets/flags/${ev.iso2}.svg`, fill ? 4200 : 7000);
+        if (t.effect === 'hang') addHang(ev);
+        if (fill) api.invoke('img', ev.user.avatar).then(u => setTimeout(() => addOverlay(P, 'avatar', u || ev.user.avatar, (t.secs || 60) * 1000), 3400));
+        marker = css2d(`<div class="pts">+${fmt(ev.points)}</div>`, 'mk burst', P.anchor.clone().add(new THREE.Vector3(0, 0.6, 0)));
+        if (t.fireworks || t.effect === 'fill') fireworks(7000);
+        sfx(ev.sfx);
+        ev.start = performance.now(); ev.minEnd = ev.start + (fill ? 11000 : 7000); pumpVoice(); return;
+      }
+      const close = t.fireworks ? 19 : t.effect === 'hang' ? 17 : 13;
       const focus = P.anchor.clone().add(new THREE.Vector3(0, 1.2, 0));
       const v = viewOf(focus, close); flyTo(v.t, v.p, 1500);
-      if (t.effect === 'hang') { addHang(ev); marker = css2d(`<div class="pts">+${ev.points.toLocaleString('vi-VN')}</div>`, 'mk burst', P.anchor.clone().add(new THREE.Vector3(0, 0.6, 0))); }
+      if (t.effect === 'hang') { addHang(ev); marker = css2d(`<div class="pts">+${ev.points.toLocaleString(LOC)}</div>`, 'mk burst', P.anchor.clone().add(new THREE.Vector3(0, 0.6, 0))); }
       else marker = makeMarker(ev, 'gift' + (t.effect === 'glow' ? ' glow' : ''));
       if (t.fireworks) fireworks(10000);
       sfx(ev.sfx);
@@ -355,8 +457,9 @@ function pumpVoice() {
   if (nid != null) { const d = store.get(nid); if (d) { store.delete(nid); playVoice(d); } return; }
   // lời chào người mới: chỉ đọc khi màn hình đang rảnh, quá 10 giây thì bỏ
   const now = performance.now();
-  freeQ = freeQ.filter(d => d.kind !== 'join' || now - d.got < 10000);
-  const i = freeQ.findIndex(d => d.kind !== 'join' || (!cur && !queue.length));
+  const idleK = k => k === 'join' || k === 'greet'; // lời chào người mới / người comment (bản đồ thế giới): chỉ đọc khi rảnh
+  freeQ = freeQ.filter(d => !idleK(d.kind) || now - d.got < 10000);
+  const i = freeQ.findIndex(d => !idleK(d.kind) || (!cur && !queue.length));
   if (i >= 0) playVoice(freeQ.splice(i, 1)[0]);
 }
 function ttsDone() { L('VOICE_END ' + playing?.id); if (playing?.id != null) { ttsFinished.add(playing.id); voiceEndAt.set(playing.id, performance.now()); } playing = null; pumpVoice(); }
@@ -452,11 +555,11 @@ function renderPlayers(list = lastPlayers, changed = []) {
   el.hidden = cfg.showPlayerBoard === false || !top.length;
   // bảng tặng quà ẩn thì bảng người chơi lên thay chỗ
   el.style.top = (cfg.showTierBoard === false ? 226 : 226 + $('tiers').offsetHeight + 18) + 'px';
-  el.innerHTML = `<h3>${esc(cfg.playerBoardTitle || 'TOP NGƯỜI CHƠI')}</h3>` + top.map((p, i) => `<div class="pr${changed.includes(p.uid) ? ' flash' : ''}">
+  el.innerHTML = `<h3>${esc(cfg.playerBoardTitle || TX.players)}</h3>` + top.map((p, i) => `<div class="pr${changed.includes(p.uid) ? ' flash' : ''}">
     <span class="rk">${i + 1}</span>
     <span class="av">${p.avatar ? `<img src="${esc(p.avatar)}" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover" onerror="this.replaceWith(document.createTextNode('${esc((p.name || '?')[0]).replace(/'/g, '')}'))" alt="">` : esc((p.name || '?')[0])}</span>
     <span class="who"><b>${esc(p.name)}</b><small>${esc(p.prov || '')}</small></span>
-    <span class="sc">${p.pts.toLocaleString('vi-VN')}</span></div>`).join('');
+    <span class="sc">${p.pts.toLocaleString(LOC)}</span></div>`).join('');
 }
 on('players', d => renderPlayers(d.list, d.changed || []));
 
@@ -465,7 +568,7 @@ const jt = (t, d) => String(t).replace(/\{ten\}/g, d.name).replace(/\{tinh\}/g, 
 let joinQ = [], joinBusy = false;
 on('join', d => {
   const t = $('ticker'); const div = document.createElement('div'); div.className = 'jn';
-  div.innerHTML = `${imgTag(d.avatar)}<b>${esc(d.name)}</b><span>${esc(jt(cfg.joinTicker ?? 'vừa vào live 👋', d))}</span>${d.province ? `<i>${esc(d.province)}</i>` : ''}`;
+  div.innerHTML = `${imgTag(d.avatar)}<b>${esc(d.name)}</b><span>${esc(jt(WORLD ? TX.joined : (cfg.joinTicker ?? TX.joined), d))}</span>${d.province ? `<i>${esc(d.province)}</i>` : ''}`;
   t.appendChild(div); while (t.children.length > 5) t.firstChild.remove();
   joinQ.push(d); if (joinQ.length > 4) joinQ.splice(0, joinQ.length - 4);
   showJoin();
@@ -474,29 +577,38 @@ function showJoin() {
   if (joinBusy || !joinQ.length) return;
   const d = joinQ.shift(); joinBusy = true;
   const el = $('welcome');
-  const more = joinQ.length ? `<em>+${joinQ.length} người nữa</em>` : '';
-  const sub = d.province ? (cfg.joinSubBack ?? 'người {tinh} quay lại') : (cfg.joinSub ?? 'Comment tên tỉnh để ghi điểm!');
-  el.innerHTML = `${imgTag(d.avatar)}<div><small>${esc(jt(cfg.joinLabel ?? 'CHÀO MỪNG', d))}</small><b>${esc(d.name)}</b>${sub.trim() ? `<span>${esc(jt(sub, d))}</span>` : ''}</div>${more}`;
+  const more = joinQ.length ? `<em>+${joinQ.length} ${WORLD ? 'more' : 'người nữa'}</em>` : '';
+  const sub = WORLD ? (d.province ? TX.joinBack : TX.joinNew) : d.province ? (cfg.joinSubBack ?? TX.joinBack) : (cfg.joinSub ?? TX.joinNew);
+  el.innerHTML = `${imgTag(d.avatar)}<div><small>${esc(jt(WORLD ? TX.welcome : (cfg.joinLabel ?? TX.welcome), d))}</small><b>${esc(d.name)}</b>${sub.trim() ? `<span>${esc(jt(sub, d))}</span>` : ''}</div>${more}`;
   el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
   const hold = joinQ.length ? 1800 : 3200;
   setTimeout(() => { el.classList.remove('on'); setTimeout(() => { joinBusy = false; showJoin(); }, 350); }, hold);
 }
 renderTiers();
+document.querySelector('.board h3').textContent = TX.board;
 
 // ── vòng lặp ──
 $('warn').remove();
-const clock = new THREE.Clock(); let lblFar = null, lblScale = 0;
+const clock = new THREE.Clock(); let lblFar = null, lblScale = 0, lastNow = 0;
 renderer.setAnimationLoop(now => {
   const t = clock.getElapsedTime();
-  if (fl) { const k = Math.min(1, (now - fl.t0) / fl.dur), e = ease(k); camT.lerpVectors(fl.ft, fl.tt, e); camera.position.lerpVectors(fl.fp, fl.tp, e); if (k >= 1) fl = null; }
+  const dt = Math.min(0.1, (now - (lastNow || now)) / 1000); lastNow = now;
+  if (fl) { const k = Math.min(1, (now - fl.t0) / fl.dur), e = ease(k); camT.lerpVectors(fl.ft, fl.tt, e); camera.position.lerpVectors(fl.fp, fl.tp, e); if (k >= 1) { if (fl.thenHome) atHome = true; fl = null; } }
   else if (atHome) {
-    if (WORLD) { // toàn cảnh thế giới: lia chậm từ châu Mỹ sang châu Á
-      const dx = Math.sin((now - homeT0) / 1000 * 0.025) * 1250, x0 = HOME.t.x - 350;
-      camT.set(x0 + dx, 0, HOME.t.z); camera.position.set(x0 + dx, HOME.p.y, HOME.p.z);
+    if (WORLD) { // lia liên tục sang đông
+      camT.x += (cfg.panSpeed ?? 28) * dt; camT.z += (panZ() - camT.z) * 0.02;
+      camera.position.copy(camT).add(PAN_OFF);
     } else camera.position.set(HOME.p.x + Math.sin(t * 0.12) * 14, HOME.p.y, HOME.p.z + Math.cos(t * 0.09) * 6);
+  }
+  if (WD) { // đi hết 1 vòng thì nhảy về bản sao tương ứng (không thấy được vì bản đồ lặp lại)
+    const sh = camT.x > WD / 2 ? -WD : camT.x < -WD / 2 ? WD : 0;
+    if (sh) { camT.x += sh; camera.position.x += sh; if (fl) for (const v of [fl.ft, fl.tt, fl.fp, fl.tp]) v.x += sh; for (const o of overlays) o.mesh.position.x += sh; }
+    for (const o of scene.children) if (o.isCSS2DObject && o.userData.bx != null) o.position.x = wrapX(o.userData.bx);
+    for (const o of overlays) o.mesh.position.x = Math.round((camT.x - o.cx) / WD) * WD;
   }
   camera.lookAt(camT);
   const dist = camera.position.distanceTo(camT);
+  if (WORLD) { scene.fog.near = dist * 1.15; scene.fog.far = dist * 2.4; camera.far = Math.max(12000, dist * 3); camera.updateProjectionMatrix(); }
   const far = dist > 170; if (far !== lblFar) { lblFar = far; $('lbl').classList.toggle('far', far); }
   if (WORLD) { // bản đồ thế giới: xa thì chỉ hiện tên nước lớn + nước đã có điểm
     const lv = dist > 1100 ? 3 : dist > 650 ? 4 : dist > 350 ? 5 : 99;
@@ -510,10 +622,10 @@ renderer.setAnimationLoop(now => {
     const h = hangs[i]; const left = (h.end - now) / 1000;
     h.ring.style.setProperty('--p', Math.max(0, left / h.secs * 100).toFixed(1));
     h.o.position.y = prov[h.province].anchor.y + 0.3 + Math.sin(t * 2 + i) * 0.15;
-    h.o.inner.style.scale = THREE.MathUtils.clamp(26 / camera.position.distanceTo(h.o.position), 0.28, 1).toFixed(3); // xa thì nhỏ lại
+    h.o.inner.style.scale = THREE.MathUtils.clamp((WORLD ? 900 : 26) / camera.position.distanceTo(h.o.position), WORLD ? 0.22 : 0.28, 1).toFixed(3); // xa thì nhỏ lại
     if (left <= 0) { scene.remove(h.o); h.o.element.remove(); hangs.splice(i, 1); }
   }
-  fxStep(now); checkFinish(now); bgmTick(); idleTick(now);
+  fxStep(now); checkFinish(now); bgmTick(); idleTick(now); overlayTick(now); popTick(now);
   renderer.render(scene, camera); lr.render(scene, camera);
 });
 api.send('stage-ready');

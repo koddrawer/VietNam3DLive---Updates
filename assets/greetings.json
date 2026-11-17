@@ -667,7 +667,7 @@
       ]
     }
   },
-  "_version": 5,
+  "_version": 6,
   "world": {
     "_huong_dan": "Câu tiếng Anh cho người xem nước ngoài ở chế độ Thế giới. {hello}=lời chào bản xứ, {ten}=tên, {nuoc}=tên nước tiếng Anh, {diem}=điểm, {xu}=số xu, {tong}=tổng điểm nước đó.",
     "greet": [
@@ -696,8 +696,8 @@
         "{nuoc} gets {diem} points!"
       ],
       "mega": [
-        "Fireworks for {nuoc}! Plus {diem} points!",
-        "Amazing! {nuoc} gets {diem} points!"
+        "Amazing! Your photo covers all of {nuoc}! Plus {diem} points!",
+        "Wow! {nuoc} is all yours! Plus {diem} points!"
       ]
     },
     "cheer": [
@@ -705,6 +705,7 @@
       "{nuoc} now has {tong} points!"
     ],
     "join_back": [
+      "{hello} {ten}! Welcome back, {nuoc}!",
       "Welcome back {ten} from {nuoc}!"
     ],
     "group": [
@@ -712,6 +713,15 @@
     ],
     "group_more": [
       "Hello {ds} and {them} more friends!"
+    ],
+    "join": [
+      "Hello {ten}, welcome to the live!",
+      "Welcome {ten}! Comment your country to score!",
+      "Hi {ten}! Where are you from?"
+    ],
+    "ask": [
+      "Thank you {ten}! Comment your country to get the points!",
+      "Thanks {ten}! Which country are you from?"
     ]
   }
 }

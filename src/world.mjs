@@ -89,7 +89,7 @@ export const HELLO = {
   MEX: 'Hola', ARG: 'Hola', CHL: 'Hola', COL: 'Hola', PER: 'Hola', CUB: 'Hola', RUS: 'Privet', UKR: 'Pryvit', POL: 'Cześć', CZE: 'Ahoj',
   SWE: 'Hej', NOR: 'Hei', FIN: 'Moi', DNK: 'Hej', GRC: 'Yassas', TUR: 'Merhaba', ISR: 'Shalom', SAU: 'Marhaba', ARE: 'Marhaba', QAT: 'Marhaba',
   KWT: 'Marhaba', EGY: 'Ahlan', IRN: 'Salam', IRQ: 'Marhaba', MNG: 'Sain baina uu', ZAF: 'Sawubona', NGA: 'Hello', KEN: 'Jambo', TZA: 'Jambo',
-  HUN: 'Szia', ROU: 'Salut', BGR: 'Zdravei', ISL: 'Halló',
+  HUN: 'Szia', ROU: 'Salut', BGR: 'Zdravei', ISL: 'Halló', VNM: 'Xin chào',
 };
 
 // Tên tiếng Việt là từ đơn dễ trùng tên người / từ thường → không dùng để nhận diện (vẫn hiển thị)
@@ -103,12 +103,19 @@ const SHORT = { GBR: 'Anh', USA: 'Mỹ', ARE: 'UAE', ZAF: 'Nam Phi', SAU: 'Ả R
 const EN_SHORT = { USA: 'America', GBR: 'the UK', KOR: 'Korea', PRK: 'North Korea', RUS: 'Russia', ARE: 'the UAE', CZE: 'Czechia',
   COD: 'Congo', LAO: 'Laos', BOL: 'Bolivia', VEN: 'Venezuela', IRN: 'Iran', SYR: 'Syria', TZA: 'Tanzania', PHL: 'the Philippines', NLD: 'the Netherlands' };
 
+// Tên tiếng Anh hiển thị trên bảng/bản đồ
+const ENAME = { USA: 'USA', GBR: 'United Kingdom', ARE: 'UAE', COD: 'DR Congo', COG: 'Congo', CAF: 'Central African Rep.', DOM: 'Dominican Rep.',
+  BIH: 'Bosnia & Herz.', CHN: 'China', FSM: 'Micronesia', VAT: 'Vatican', GBR_: '', MKD: 'North Macedonia', KOR: 'South Korea', PRK: 'North Korea', RUS: 'Russia', VNM: 'Vietnam', LAO: 'Laos',
+  CZE: 'Czechia', TZA: 'Tanzania', SYR: 'Syria', IRN: 'Iran', BOL: 'Bolivia', VEN: 'Venezuela', CYN: 'N. Cyprus', SOL: 'Somaliland' };
+
 /** Tạo danh sách vùng cho chế độ Thế giới từ dữ liệu bản đồ. */
 export function buildWorld(countries) {
   const list = countries.map(c => ({
-    id: c.id, a3: c.a3, name: SHORT[c.a3] || c.vi, spoken: SHORT[c.a3] || c.vi, en: EN_SHORT[c.a3] || c.en, lang: c.a3 === 'VNM' ? 'vi' : 'en',
-    matchName: !AMBIG.has(c.a3) && !SHORT[c.a3],
-    alias: [c.en, EN_SHORT[c.a3], ...(AMBIG.has(c.a3) || SHORT[c.a3] ? [] : [c.vi]), ...(c.alt || []).filter(a => a && a.length >= 4 && !/[.()]/.test(a)), ...(EXTRA[c.a3] || [])],
+    // chế độ thế giới hiển thị & đọc bằng tiếng Anh cho mọi nước (kể cả Việt Nam)
+    id: c.id, a3: c.a3, iso2: (c.iso2 || '').toLowerCase(), name: ENAME[c.a3] || c.en, vi: SHORT[c.a3] || c.vi, spoken: EN_SHORT[c.a3] || c.en,
+    en: EN_SHORT[c.a3] || c.en, lang: 'en',
+    matchName: true,
+    alias: [c.en, EN_SHORT[c.a3], SHORT[c.a3] && !AMBIG.has(c.a3) && SHORT[c.a3].length > 3 ? SHORT[c.a3] : null, ...(AMBIG.has(c.a3) || SHORT[c.a3] ? [] : [c.vi]), ...(c.alt || []).filter(a => a && a.length >= 4 && !/[.()]/.test(a)), ...(EXTRA[c.a3] || [])],
   }));
   const vn = list.find(r => r.a3 === 'VNM');
   // tên tỉnh/thành, địa danh Việt Nam cũng tính cho Việt Nam (dùng chung một bộ so khớp để "Mỹ Tho" ra Việt Nam, không ra Mỹ)
